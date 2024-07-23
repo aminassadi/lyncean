@@ -2,15 +2,14 @@
 #ifndef LYNCEAN_BPF_TYPES_HEADER
 #define LYNCEAN_BPF_TYPES_HEADER
 
-#include <linux/version.h>
-#include <linux/bpf.h>
-#include <linux/string.h>
-#include <linux/limits.h>
-#include <asm/ptrace.h>
+#include "vmlinux.h"
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
+#include <bpf/bpf_core_read.h>
 
 #define MAX_CPU 512
 #define MAX_RUNNING_THREADS 4096
-#define SYSCALL_COUNT_SIZE 512;
+#define SYSCALL_COUNT_SIZE 512
 struct __raw_tracepoint_args {
     __u64 args[0];
 };
@@ -26,7 +25,7 @@ typedef struct
 typedef struct
 {
     unsigned int       target_pid;
-    bool               active_syscalls[SYSCALL_COUNT_SIZE];
+    bool               active[SYSCALL_COUNT_SIZE];
 }config_struct;
 
 struct {

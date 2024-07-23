@@ -1,8 +1,3 @@
-#include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_tracing.h>
-#include <stdint.h>
-#include "vmlinux.h"
 #include "types.h"
 
 SEC("raw_tracepoint/sys_enter")
@@ -19,7 +14,7 @@ int genericRawEnter(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t pid = pidtid >> 32;
-    if(config->active_syscalls[syscallid] && config->target_pid == pid)
+    if(config->active[syscallid] && config->target_pid == pid)
     {
         syscall_args* args = NULL;
         args = bpf_map_lookup_elem(&syscall_args_pool, &cpu);
@@ -27,6 +22,7 @@ int genericRawEnter(struct __raw_tracepoint_args *ctx)
             //todo: ERROR handling
             return 0;
         }
+        memset(args, 0, sizeof(syscall_args));
         args->syscallid = syscallid;
         const void *task = NULL;
     }    
