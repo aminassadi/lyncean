@@ -6,10 +6,10 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
-
+#include "shared.h"
 #define MAX_CPU 512
 #define MAX_RUNNING_THREADS 4096
-#define SYSCALL_COUNT_SIZE 512
+
 struct __raw_tracepoint_args {
     __u64 args[0];
 };
@@ -22,11 +22,6 @@ typedef struct
     unsigned long      returncode;
 }syscall_args;
 
-typedef struct
-{
-    unsigned int       target_pid;
-    bool               active[SYSCALL_COUNT_SIZE];
-}config_struct;
 
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
@@ -48,5 +43,12 @@ struct {
     __type(value, syscall_args);
     __uint(max_entries, MAX_CPU);
 } syscall_args_pool SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(key_size, sizeof(int));
+    __uint(value_size, sizeof(uint32_t));
+    __uint(max_entries, 100*1024);
+} perf_buff SEC(".maps");
 
 #endif
