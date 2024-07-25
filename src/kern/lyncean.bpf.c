@@ -1,5 +1,24 @@
 #include "types.h"
-#include "helper.h"
+#include "common.h"
+
+
+SEC("lyncean/raw_syscalls/read_exit")
+int generic_raw_syscall_read_exit(struct __raw_tracepoint_args* ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args* args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if(!args)
+    {
+        return 0;
+    }
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, &args->syscallid, sizeof(unsigned long));
+    if(ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);   
+    }
+    return 0;
+}
 
 __attribute__((always_inline))
 static inline bool set_args(unsigned long *arg, const struct pt_regs *regs)
@@ -28,7 +47,7 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
     config = bpf_map_lookup_elem(&config_map, &config_key);
     if(!config)
     {
-        BPF_PRINTK("ERROR, read config from config map failed\n");
+        BPF_PRINTK("ERROR, lookup from config map failed\n");
         return 0;
     }
     uint32_t pid = pidtid >> 32;
@@ -58,20 +77,11 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
 
 SEC("raw_tracepoint/sys_exit")
 int generic_raw_sys_exit(struct __raw_tracepoint_args *ctx)
-{
-    uint64_t pidtid = bpf_get_current_pid_tgid();
-    syscall_args* args = NULL;
-    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
-    if(!args)
-    {
-        return 0;
-    }
-    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, &args->syscallid, sizeof(unsigned long));
-    if(ret != 0)
-    {
-        BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);   
-    }
+{  
+    bpf_tail_call(ctx, &prog_array_init, ctx->args[1]);
+    return 0;
 }
+
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
