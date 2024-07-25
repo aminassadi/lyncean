@@ -5,6 +5,7 @@
     bpf_trace_printk(fmt, sizeof(fmt), ##__VA_ARGS__ );
 
 #define PT_REGS_RC(x)    ((x)->ax)
+#define PT_REGS_ORIG_AX(x)  ((x)->orig_ax) 
 
 __attribute__((always_inline))
 static inline bool set_args(unsigned long *arg, const struct pt_regs *regs)

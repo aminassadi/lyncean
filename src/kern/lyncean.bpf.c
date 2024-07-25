@@ -88,7 +88,12 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
 SEC("raw_tracepoint/sys_exit")
 int generic_raw_sys_exit(struct __raw_tracepoint_args *ctx)
 {  
-    bpf_tail_call(ctx, &prog_array_tailcalls, ctx->args[1]);
+    struct pt_regs* regs = (struct pt_regs*)(ctx->args[0]);
+    unsigned long syscallid;
+    if (bpf_probe_read(&syscallid, sizeof(int64_t), &regs->orig_ax) != 0){
+        BPF_PRINTK("ERROR, failed to get syscall id \n");
+    }
+    bpf_tail_call(ctx, &prog_array_tailcalls, syscallid);
     return 0;
 }
 
