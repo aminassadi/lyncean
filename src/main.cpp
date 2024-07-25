@@ -21,7 +21,8 @@ static void handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
         case SYS_read:
         {
             auto event{reinterpret_cast<struct_read_syscall*>(data)};
-            std::cout<<"nr: "<<event->syscallid<<" count: "<<event->count << " rc: " << event->rc <<std::endl;
+            std::cout<<"nr: "<<event->syscallid<<" count: "<<event->count << " rc: " << event->rc 
+            <<std::endl << "data: "<<event->buff<<std::endl;
             break;
         }            
         case SYS_write:

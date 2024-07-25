@@ -26,17 +26,15 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args* ctx)
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
 
-    u32 size = 0;
-    int ret = 0;
+    u32 size = read_struct->rc;
     asm volatile("%[size] &= 16383\n"
              :[size]"+&r"(size)
              );
-    ret = bpf_probe_read(read_struct->buff, size, (void*)args->arg[1]);
-    if(!ret)
+    if(bpf_probe_read(read_struct->buff, size, (void*)args->arg[1]) != 0)
     {
-        BPF_PRINTK("ERROR, tail_raw_syscall_read_exit, bpd_probe_read failed with error: %ld", ret);
+        BPF_PRINTK("ERROR, tail_raw_syscall_read_exit, bpd_probe_read failed.\n");
     }
-    ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, read_struct, sizeof(struct_read_syscall));
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, read_struct, sizeof(struct_read_syscall));
     if(ret != 0)
     {
         BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);   
