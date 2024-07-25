@@ -3,7 +3,7 @@
 
 
 SEC("lyncean/raw_syscalls/read_exit")
-int generic_raw_syscall_read_exit(struct __raw_tracepoint_args* ctx)
+int tail_raw_syscall_read_exit(struct __raw_tracepoint_args* ctx)
 {
     uint64_t pidtid = bpf_get_current_pid_tgid();
     syscall_args* args = NULL;
@@ -12,28 +12,38 @@ int generic_raw_syscall_read_exit(struct __raw_tracepoint_args* ctx)
     {
         return 0;
     }
-    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, &args->syscallid, sizeof(unsigned long));
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_read_syscall* read_struct = NULL;
+    read_struct = bpf_map_lookup_elem(&read_struct_pool, &cpu);
+    if(!read_struct)
+    {
+        BPF_PRINTK("ERROR, lookup from read_struct_pool failed\n");
+        goto out;
+    }
+    read_struct->syscallid = args->syscallid;
+    read_struct->count = args->arg[2];
+    if (bpf_probe_read(&read_struct->rc, sizeof(int64_t), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0){
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+
+    u32 size = 0;
+    int ret = 0;
+    asm volatile("%[size] &= 16383\n"
+             :[size]"+&r"(size)
+             );
+    ret = bpf_probe_read(read_struct->buff, size, (void*)args->arg[1]);
+    if(!ret)
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_read_exit, bpd_probe_read failed with error: %ld", ret);
+    }
+    ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, read_struct, sizeof(struct_read_syscall));
     if(ret != 0)
     {
         BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);   
     }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
     return 0;
-}
-
-__attribute__((always_inline))
-static inline bool set_args(unsigned long *arg, const struct pt_regs *regs)
-{
-    int ret = 0;
-    ret |= bpf_probe_read(&arg[0], sizeof(arg[0]), &regs->di);
-    ret |= bpf_probe_read(&arg[1], sizeof(arg[1]), &regs->si);
-    ret |= bpf_probe_read(&arg[2], sizeof(arg[2]), &regs->dx);
-    ret |= bpf_probe_read(&arg[3], sizeof(arg[3]), &regs->r10);
-    ret |= bpf_probe_read(&arg[4], sizeof(arg[4]), &regs->r8);
-    ret |= bpf_probe_read(&arg[5], sizeof(arg[5]), &regs->r9);
-    if (!ret)
-        return true;
-    else
-        return false;
 }
 
 SEC("raw_tracepoint/sys_enter")
@@ -78,7 +88,7 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
 SEC("raw_tracepoint/sys_exit")
 int generic_raw_sys_exit(struct __raw_tracepoint_args *ctx)
 {  
-    bpf_tail_call(ctx, &prog_array_init, ctx->args[1]);
+    bpf_tail_call(ctx, &prog_array_tailcalls, ctx->args[1]);
     return 0;
 }
 

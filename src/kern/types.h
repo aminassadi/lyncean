@@ -22,7 +22,7 @@ typedef struct
     unsigned long      returncode;
 }syscall_args;
 
-int generic_raw_syscall_read_exit(struct __raw_tracepoint_args* ctx);
+int tail_raw_syscall_read_exit(struct __raw_tracepoint_args* ctx);
 
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
@@ -53,14 +53,21 @@ struct {
 } perf_buff SEC(".maps");
 
 struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, uint32_t);
+    __type(value, struct_read_syscall);
+    __uint(max_entries, MAX_CPU);
+} read_struct_pool SEC(".maps");
+
+struct {
         __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
         __uint(max_entries, SYSCALL_COUNT_SIZE);
         __uint(key_size, sizeof(__u32));
         __uint(value_size, sizeof(__u32));
         __array(values, int (void *));
-} prog_array_init SEC(".maps") = {
+} prog_array_tailcalls SEC(".maps") = {
         .values = {                
-                [1] = (void *)&generic_raw_syscall_read_exit,
+                [1] = (void *)&tail_raw_syscall_read_exit,
         },
 };
 
