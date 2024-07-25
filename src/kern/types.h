@@ -67,7 +67,7 @@ struct {
         __array(values, int (void *));
 } prog_array_tailcalls SEC(".maps") = {
         .values = {                
-                [1] = (void *)&tail_raw_syscall_read_exit,
+                [0] = (void *)&tail_raw_syscall_read_exit,
         },
 };
 
