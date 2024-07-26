@@ -5,9 +5,9 @@
 #define MAX_DATA_WR_RD 16384
 typedef struct
 {
-    unsigned int       target_pid;
-    bool               active[SYSCALL_COUNT_SIZE];
-}config_struct;
+    unsigned int target_pid;
+    bool active[SYSCALL_COUNT_SIZE];
+} bpf_config_struct;
 
 typedef struct
 {
@@ -16,5 +16,5 @@ typedef struct
     char buff[MAX_DATA_WR_RD];
     unsigned long count;
     unsigned long rc;
-}struct_read_syscall;
+} struct_read_syscall;
 #endif

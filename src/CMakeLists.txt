@@ -9,6 +9,7 @@ add_custom_target(
 
 set(SOURCE main.cpp)
 list(APPEND SOURCE event_handler.cpp)
+list(APPEND SOURCE bpf_helper.h)
 
 add_executable(${PROJECT_NAME} ${SOURCE})
 add_dependencies(${PROJECT_NAME}  bpf_skeleton)

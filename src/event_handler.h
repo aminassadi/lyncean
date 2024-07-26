@@ -6,12 +6,13 @@
 class event_handler
 {
 public:
-    event_handler(lynceanbpf_bpf* skel);
+    event_handler(lynceanbpf_bpf *skel);
     void start();
-    void stop();    
+    void stop();
+
 private:
-    lynceanbpf_bpf* _skel{};    
-    perf_buffer* _perf_buff{};
+    lynceanbpf_bpf *_skel{};
+    perf_buffer *_perf_buff{};
     bool _active_token{};
 };
 

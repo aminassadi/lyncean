@@ -7,3 +7,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 add_subdirectory(src)
 add_subdirectory(test)
 
+include_directories(../src/.output)
+target_link_directories(${PROJECT_NAME} PRIVATE ../src/.output)
+target_link_libraries(${PROJECT_NAME} PRIVATE libbpf.a elf z)

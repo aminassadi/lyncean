@@ -2,15 +2,14 @@
 #define LYNCEAN_BPF_COMMON_HEADER
 #include "types.h"
 
-#define BPF_PRINTK( format, ... ) \
-    char fmt[] = format; \
-    bpf_trace_printk(fmt, sizeof(fmt), ##__VA_ARGS__ );
+#define BPF_PRINTK(format, ...) \
+    char fmt[] = format;        \
+    bpf_trace_printk(fmt, sizeof(fmt), ##__VA_ARGS__);
 
-#define PT_REGS_RC(x)    ((x)->ax)
-#define PT_REGS_ORIG_AX(x)  ((x)->orig_ax) 
+#define PT_REGS_RC(x) ((x)->ax)
+#define PT_REGS_ORIG_AX(x) ((x)->orig_ax)
 
-__attribute__((always_inline))
-static inline bool set_args(unsigned long *arg, const struct pt_regs *regs)
+__attribute__((always_inline)) static inline bool set_args(unsigned long *arg, const struct pt_regs *regs)
 {
     int ret = 0;
     ret |= bpf_probe_read(&arg[0], sizeof(arg[0]), &regs->di);
@@ -25,5 +24,3 @@ static inline bool set_args(unsigned long *arg, const struct pt_regs *regs)
         return false;
 }
 #endif
-
-
