@@ -3,6 +3,9 @@ set(SOURCE bpf_test.cpp)
 #list(APPEND SOURCE samples/process.cpp)
 add_executable(${PROJECT_NAME} ${SOURCE})
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test_files
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
