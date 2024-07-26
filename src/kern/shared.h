@@ -13,8 +13,9 @@ typedef struct
 {
     unsigned long syscallid;
     int fd;
-    char buff[MAX_DATA_WR_RD];
     unsigned long count;
     unsigned long rc;
-} struct_read_syscall;
+    char buff[MAX_DATA_WR_RD];
+} __attribute__((aligned(8))) struct_read_syscall;
+
 #endif

@@ -19,7 +19,8 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, lookup from read_struct_pool failed\n");
         goto out;
     }
-    memset(read_struct, 0, sizeof(read_struct));
+    read_struct->fd = args->arg[0];
+   // memset(read_struct->buff, 0, MAX_DATA_WR_RD);
     read_struct->syscallid = args->syscallid;
     read_struct->count = args->arg[2];
     if (bpf_probe_read(&read_struct->rc, sizeof(int64_t), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
@@ -34,6 +35,7 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
     {
         BPF_PRINTK("ERROR, tail_raw_syscall_read_exit, bpd_probe_read failed.\n");
     }
+    BPF_PRINTK("sizeof struct:%ld", sizeof(struct_read_syscall));
     int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, read_struct, sizeof(struct_read_syscall));
     if (ret != 0)
     {
