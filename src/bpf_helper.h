@@ -2,8 +2,8 @@
 #define LYNCEAN_BPF_HELPER_HEADER
 #include "kern/shared.h"
 #include "lynceanbpf.skel.h"
+#include "bpf/bpf.h"
 #include <optional>
-
 
 inline static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
