@@ -8,7 +8,7 @@ add_custom_target(
 )
 
 set(SOURCE main.cpp)
-#list(APPEND SOURCE pch.h)
+list(APPEND SOURCE event_handler.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE})
 add_dependencies(${PROJECT_NAME}  bpf_skeleton)

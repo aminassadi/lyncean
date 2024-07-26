@@ -2,16 +2,19 @@
 #include <bpf/libbpf.h>
 #include <bpf/bpf.h>
 #include "lynceanbpf.skel.h"
-#include "kern/shared.h"
-#include <sys/syscall.h>
 #include <unistd.h>
 #include <optional>
+#include "kern/shared.h"
+#include <signal.h>
+#include <memory>
+#include "event_handler.h"
 
-static volatile bool exiting = false;
+std::unique_ptr<event_handler> bpf_event_hadnler;
 
-static void sig_handler(int sig)
+static void handle_terminate_signal(int sig)
 {
-	exiting = true;
+    if(bpf_event_hadnler)
+	    bpf_event_hadnler->stop();
 }
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
@@ -74,48 +77,18 @@ std::optional<lynceanbpf_bpf*> load_bpf_skeleton()
     return std::nullopt;   
 }
 
-static void handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
-{
-	std::cout << *reinterpret_cast<unsigned long*>(data) <<" sizeof data: " << data_sz << '\n';
-    switch (*reinterpret_cast<unsigned long*>(data))
-    {
-        case SYS_read:
-        {
-            auto event{reinterpret_cast<struct_read_syscall*>(data)};
-            std::cout<<"nr: "<<event->syscallid<<" count: "<<event->count << " rc: " << event->rc 
-            <<std::endl << "data: "<<event->buff<<std::endl;
-            break;
-        }            
-        case SYS_write:
-            break;
-        
-        default:
-            break;
-    }
-}
-
-
 int main(int argc, char** argv)
 {
    
     //todo: spawn a child process
+    signal(SIGINT, handle_terminate_signal);
+	signal(SIGTERM, handle_terminate_signal);
     auto skel{load_bpf_skeleton()};
     if(!skel.has_value())
     {
         exit(EXIT_FAILURE);
     }
-    std::cout<<"hello";
-
-    auto perf_buff{perf_buffer__new(bpf_map__fd(skel.value()->maps.perf_buff), 1024, handle_event, NULL, NULL, NULL)};
-    while (!exiting) {
-        int err = perf_buffer__poll(perf_buff, 100 /* timeout, ms */);
-        if (err == -EINTR) {
-            err = 0;
-            break;
-        }
-        if (err < 0) {
-            printf("Error polling perf buffer: %d\n", err);
-            break;
-        }
-    }
+    bpf_event_hadnler = std::make_unique<event_handler>(skel.value());
+    bpf_event_hadnler->start();
+    lynceanbpf_bpf::destroy(skel.value());    
 }
