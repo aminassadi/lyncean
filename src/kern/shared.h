@@ -1,3 +1,6 @@
+#ifndef LYNCEAN_BPF_SHARED_HEADER
+#define LYNCEAN_BPF_SHARED_HEADER
+
 #define SYSCALL_COUNT_SIZE 512
 #define MAX_DATA_WR_RD 16384
 typedef struct
@@ -14,3 +17,4 @@ typedef struct
     unsigned long count;
     unsigned long rc;
 }struct_read_syscall;
+#endif

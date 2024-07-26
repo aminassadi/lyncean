@@ -1,3 +1,5 @@
+#ifndef LYNCEAN_BPF_COMMON_HEADER
+#define LYNCEAN_BPF_COMMON_HEADER
 #include "types.h"
 
 #define BPF_PRINTK( format, ... ) \
@@ -22,5 +24,6 @@ static inline bool set_args(unsigned long *arg, const struct pt_regs *regs)
     else
         return false;
 }
+#endif
 
 
