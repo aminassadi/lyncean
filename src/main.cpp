@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <memory>
 #include "event_handler.h"
+#include "argparse/argparse.hpp"
 
 std::unique_ptr<event_handler> bpf_event_hadnler;
 
