@@ -18,8 +18,6 @@ event_struct global_event{};
 
 static void handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
 {
-   // EXPECT_EQ(data_sz, global_event.size) << "bpf struct size: " << data_sz << ", user struct size: " << global_event.size << '\n';
-
     EXPECT_EQ(memcmp(global_event.buff, reinterpret_cast<char *>(data), global_event.size), 0);
 }
 
@@ -32,15 +30,17 @@ private:
         ASSERT_TRUE(skel.has_value());
         _skel = skel.value();
         _perf_buff = perf_buffer__new(bpf_map__fd(_skel->maps.perf_buff), 1024, handle_event, NULL, NULL, NULL);
+        ASSERT_TRUE(_perf_buff);
     }   
 
 protected:
-    lynceanbpf_bpf *_skel{};
-    perf_buffer *_perf_buff{};
+    static lynceanbpf_bpf *_skel;
+    static perf_buffer *_perf_buff;
     bpf_test_fixture()
     {
-        // This method will be called before each test.
-        load_bpf();
+        //load bfp once
+        if(!_skel)
+            load_bpf();
     }
 
     void SetUp() override
@@ -55,6 +55,9 @@ protected:
         }
     }
 };
+
+lynceanbpf_bpf* bpf_test_fixture::_skel = nullptr;
+perf_buffer* bpf_test_fixture::_perf_buff = nullptr;
 
 TEST_F(bpf_test_fixture, read_system_call)
 {   
