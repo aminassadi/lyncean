@@ -11,6 +11,7 @@
 #include <future>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
+#include "serializer.h"
 
 using namespace std::literals;
 
@@ -155,7 +156,8 @@ int main(int argc, char **argv)
                 {
                     exit(EXIT_FAILURE);
                 }
-                bpf_event_handler = std::make_unique<event_handler>(skel.value());
+                realastic_impl sr;
+                bpf_event_handler = std::make_unique<event_handler>(skel.value(), &sr);
                 future = std::async(std::launch::async, &event_handler::start, bpf_event_handler.get());
             }
             catch (const std::exception &err)
@@ -227,7 +229,8 @@ int main(int argc, char **argv)
         {
             exit(EXIT_FAILURE);
         }
-        bpf_event_handler = std::make_unique<event_handler>(skel.value());
+        realastic_impl sr;
+        bpf_event_handler = std::make_unique<event_handler>(skel.value(), &sr);
         bpf_event_handler->start();
         lynceanbpf_bpf::destroy(skel.value());
     }

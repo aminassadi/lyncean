@@ -16,7 +16,7 @@ struct event_struct
 
 event_struct global_event{};
 
-static void handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
+static void global_handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
 {
     EXPECT_EQ(memcmp(global_event.buff, reinterpret_cast<char *>(data), global_event.size), 0);
 }
@@ -29,7 +29,7 @@ private:
         auto skel{load_bpf_skeleton(getpid())};
         ASSERT_TRUE(skel.has_value());
         _skel = skel.value();
-        _perf_buff = perf_buffer__new(bpf_map__fd(_skel->maps.perf_buff), 1024, handle_event, NULL, NULL, NULL);
+        _perf_buff = perf_buffer__new(bpf_map__fd(_skel->maps.perf_buff), 1024, global_handle_event, NULL, NULL, NULL);
         ASSERT_TRUE(_perf_buff);
     }   
 
