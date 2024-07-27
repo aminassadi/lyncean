@@ -75,8 +75,29 @@ TEST_F(bpf_test_fixture, read_system_call)
     event.fd = fd;
     event.rc = ret;
     memcpy(event.buff, buff.data(), ret);
+    memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void*)&event, sizeof(struct_read_syscall));
     global_event.size = sizeof(struct_read_syscall);
+    std::this_thread::sleep_for(100ms);
+    int err = perf_buffer__poll(_perf_buff, 100);
+    ASSERT_FALSE(err < 0);
+}
+
+TEST_F(bpf_test_fixture, open_system_call)
+{   
+    char* pathname = "./test_files/test_read.txt";
+    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    int flags = O_RDONLY;
+    int fd = open(pathname, flags, mode);
+    ASSERT_FALSE(fd < 0);
+    struct_open_syscall event;
+    memset(&event, 0, sizeof(struct_open_syscall));
+    event.syscallid = SYS_open;
+    event.flag = flags;
+    memcpy(event.pathname, pathname, sizeof(pathname));
+    memset(&global_event, 0, sizeof(event_struct));
+    memcpy(global_event.buff, (void*)&event, sizeof(struct_open_syscall));
+    global_event.size = sizeof(struct_open_syscall);
     std::this_thread::sleep_for(100ms);
     int err = perf_buffer__poll(_perf_buff, 100);
     ASSERT_FALSE(err < 0);
