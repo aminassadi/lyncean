@@ -101,7 +101,14 @@ int main(int argc, char **argv)
     std::string params{};
     if (program.is_used("--params"))
     {
-        params = program.get<std::string>("params");
+        auto tmp = program.get<std::vector<std::string>>("params");
+        for(auto itr = tmp.begin(); itr != tmp.end(); ++itr)
+        {
+            params += *itr;
+            if(itr != tmp.end())
+                break;
+            params += " "s;
+        }
     }
 
     if (pid && command.empty())
@@ -115,6 +122,8 @@ int main(int argc, char **argv)
     }
     else if (command.size())
     {
+        std::cout << "\n\ncommand is: " << command << '\n';
+        std::cout << "params is: " << params << '\n\n';
         signal(SIGINT, handle_terminate_signal);
         signal(SIGTERM, handle_terminate_signal);
 
@@ -137,17 +146,23 @@ int main(int argc, char **argv)
             }
 
             // Execute the command
-            char *argv[] = {"date", NULL, NULL};
-            // std::this_thread::sleep_for(2000ms);
-            execvp(argv[0], argv);
+            if(params.size())
+            {
+                char *argv[] = {command.data(), params.data(), NULL};
+                execvp(argv[0], argv);
+            }
+            else
+            {
+                char *argv[] = {command.data(), NULL, NULL};
+                execvp(argv[0], argv);
+            }
 
             // If execvp fails
-            perror("execvp failed");
+            perror("execvp failed!!!\n");
             exit(1);
         }
         else // Parent process
         {
-            // TODO
             std::optional<lynceanbpf_bpf *> skel{};
             try
             {
