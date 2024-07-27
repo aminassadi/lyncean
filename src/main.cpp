@@ -57,7 +57,7 @@ int main(int argc, char **argv)
         .help("The command to execute");
 
     program.add_argument("--params")
-        .default_value(std::string(""))
+        .default_value(std::vector<std::string>({"empty"}))
         .help("Parameters for the command")
         .remaining();
 
@@ -108,6 +108,11 @@ int main(int argc, char **argv)
             if(itr != tmp.end())
                 break;
             params += " "s;
+        }
+
+        if(params == "empty"s)
+        {
+            params = ""s;
         }
     }
 
