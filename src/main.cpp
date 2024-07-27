@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 
             // Execute the command
             char *argv[] = {"date", NULL, NULL};
-            std::this_thread::sleep_for(2000ms);
+            // std::this_thread::sleep_for(2000ms);
             execvp(argv[0], argv);
 
             // If execvp fails
@@ -182,16 +182,6 @@ int main(int argc, char **argv)
                 return 1;
             }
 
-            if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP)
-            {
-                printf("Child process with PID: %d is stopped before execution.\n", pid);
-            }
-            else
-            {
-                fprintf(stderr, "Child did not stop as expected.\n");
-                return 1;
-            }
-
             // Resume the child process
             if (ptrace(PTRACE_DETACH, pid, NULL, SIGCONT) == -1)
             {
@@ -205,6 +195,7 @@ int main(int argc, char **argv)
                 perror("waitpid failed");
                 return 1;
             }
+            std::this_thread::sleep_for(1s);
             bpf_event_handler->stop();
             lynceanbpf_bpf::destroy(skel.value());
 
