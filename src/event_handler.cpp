@@ -55,6 +55,7 @@ void event_handler::handle_event(void *ctx, int cpu, void *data, unsigned int da
         break;
     }
     case SYS_write:
+         std::cout<<_serializer->serialize_write_event(reinterpret_cast<struct_write_syscall*>(data))<<std::endl;
         break;
 
     default:

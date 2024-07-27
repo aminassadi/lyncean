@@ -103,3 +103,26 @@ TEST_F(bpf_test_fixture, open_system_call)
     ASSERT_FALSE(err < 0);
 }
 
+TEST_F(bpf_test_fixture, write_systemcall)
+{   
+    char* pathname = "./test_files/write_test.txt";
+    int fd = open(pathname, O_WRONLY|O_TRUNC);
+    ASSERT_FALSE(fd < 0);
+    std::string buff("lyncean open source project.");
+    int ret = read(fd, buff.data(), buff.length());
+    ASSERT_FALSE(ret == buff.length());
+    struct_write_syscall event{};
+    memset(&event, 0, sizeof(struct_write_syscall));
+    event.syscallid = SYS_write;
+    event.count = ret;
+    event.fd = fd;
+    event.rc = ret;
+    memcpy(event.buff, buff.data(), ret);
+    memset(&global_event, 0, sizeof(event_struct));
+    memcpy(global_event.buff, (void*)&event, sizeof(struct_write_syscall));
+    global_event.size = sizeof(struct_write_syscall);
+    std::this_thread::sleep_for(100ms);
+    int err = perf_buffer__poll(_perf_buff, 100);
+    ASSERT_FALSE(err < 0);
+}
+

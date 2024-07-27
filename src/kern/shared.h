@@ -28,5 +28,14 @@ typedef struct
     
 } __attribute__((aligned(8))) struct_open_syscall;
 
+typedef struct 
+{
+    unsigned long syscallid;
+    int fd;
+    unsigned long count;
+    unsigned long rc;
+    char buff[MAX_DATA_WR_RD];    
+} __attribute__((aligned(8))) struct_write_syscall;
+
 
 #endif

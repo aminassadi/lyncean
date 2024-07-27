@@ -7,6 +7,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 #include "shared.h"
+#include "asm/unistd_64.h"
 #define MAX_CPU 512
 #define MAX_RUNNING_THREADS 4096
 #define NUM_OF_SYSCALLS 512
@@ -24,6 +25,7 @@ typedef struct
 } syscall_args;
 
 int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx);
 
 struct
 {
@@ -67,6 +69,14 @@ struct
 
 struct
 {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, uint32_t);
+    __type(value, struct_write_syscall);
+    __uint(max_entries, MAX_CPU);
+} write_struct_pool SEC(".maps");
+
+struct
+{
     __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
     __uint(max_entries, SYSCALL_COUNT_SIZE);
     __uint(key_size, sizeof(__u32));
@@ -74,7 +84,8 @@ struct
     __array(values, int(void *));
 } prog_array_tailcalls SEC(".maps") = {
     .values = {
-        [0] = (void *)&tail_raw_syscall_read_exit,
+        [__NR_read] = (void *)&tail_raw_syscall_read_exit,
+        [__NR_write] = (void*)&tail_raw_syscall_write_exit,
     },
 };
 

@@ -6,12 +6,14 @@ class serializer
 {
 public:
     virtual std::string serialize_read_event(struct_read_syscall *event) = 0;
+    virtual std::string serialize_write_event(struct_write_syscall *event) = 0;
 };
 
 class realastic_impl : public serializer
 {
 public:
     std::string serialize_read_event(struct_read_syscall *event) override;
+    std::string serialize_write_event(struct_write_syscall *event) override;
 };
 
 #endif

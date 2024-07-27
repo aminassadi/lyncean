@@ -46,6 +46,51 @@ out:
     return 0;
 }
 
+SEC("lyncean/raw_syscalls/write_exit")
+int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_write_syscall *write_struct = NULL;
+    write_struct = bpf_map_lookup_elem(&write_struct_pool, &cpu);
+    if (!write_struct)
+    {
+        BPF_PRINTK("ERROR, lookup from write_struct_pool failed\n");
+        goto out;
+    }
+    write_struct->fd = args->arg[0];
+   // memset(read_struct->buff, 0, MAX_DATA_WR_RD);
+    write_struct->syscallid = args->syscallid;
+    write_struct->count = args->arg[2];
+    if (bpf_probe_read(&write_struct->rc, sizeof(int64_t), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+
+    u32 size = write_struct->rc;
+    asm volatile("%[size] &= 16383\n"
+                 : [size] "+&r"(size));
+    if (bpf_probe_read(write_struct->buff, size, (void *)args->arg[1]) != 0)
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_read_exit, bpd_probe_read failed.\n");
+    }
+    BPF_PRINTK("sizeof struct:%ld", sizeof(struct_read_syscall));
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, write_struct, sizeof(struct_write_syscall));
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    return 0;
+}
+
 SEC("raw_tracepoint/sys_enter")
 int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
 {
