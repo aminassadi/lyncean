@@ -42,22 +42,18 @@ void event_handler::stop()
 
 void event_handler::handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
 {
-   // std::cout << *reinterpret_cast<unsigned long *>(data) << " sizeof data: " << data_sz << '\n';
     switch (*reinterpret_cast<unsigned long *>(data))
     {
     case SYS_read:
     {
         std::cout<<_serializer->serialize_read_event(reinterpret_cast<struct_read_syscall*>(data))<<std::endl;
-        // auto event{reinterpret_cast<struct_read_syscall *>(data)};
-        // std::cout << "nr: " << event->syscallid << " count: " << event->count << " rc: " << event->rc
-        //           << std::endl
-        //           << "data: " << event->buff << std::endl;
         break;
     }
     case SYS_write:
-         std::cout<<_serializer->serialize_write_event(reinterpret_cast<struct_write_syscall*>(data))<<std::endl;
+    {
+        std::cout<<_serializer->serialize_write_event(reinterpret_cast<struct_write_syscall*>(data))<<std::endl;
         break;
-
+    }       
     default:
         break;
     }
