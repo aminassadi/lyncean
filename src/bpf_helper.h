@@ -29,6 +29,7 @@ inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton(int pid)
         int key = 0;
         int ret = bpf_program__set_type(skel->progs.tail_raw_syscall_read_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_write_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_open_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_object__load(skel->obj);
         if (ret)
         {

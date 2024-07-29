@@ -26,6 +26,7 @@ typedef struct
 
 int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx);
 
 struct
 {
@@ -77,6 +78,14 @@ struct
 
 struct
 {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, uint32_t);
+    __type(value, struct_open_syscall);
+    __uint(max_entries, MAX_CPU);
+} open_struct_pool SEC(".maps");
+
+struct
+{
     __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
     __uint(max_entries, SYSCALL_COUNT_SIZE);
     __uint(key_size, sizeof(__u32));
@@ -86,6 +95,7 @@ struct
     .values = {
         [__NR_read] = (void *)&tail_raw_syscall_read_exit,
         [__NR_write] = (void*)&tail_raw_syscall_write_exit,
+        [__NR_open] = (void*)&tail_raw_syscall_open_exit,
     },
 };
 
