@@ -106,7 +106,7 @@ TEST_F(bpf_test_fixture, read_system_call)
     global_event.syscallid = SYS_read;
     std::this_thread::sleep_for(100ms);
     int err = perf_buffer__poll(_perf_buff, 100);
-    ASSERT_FALSE(err < 0);
+    EXPECT_FALSE(err == 0);
 }
 
 TEST_F(bpf_test_fixture, open_system_call)
@@ -126,7 +126,7 @@ TEST_F(bpf_test_fixture, open_system_call)
     global_event.syscallid = SYS_open;
     std::this_thread::sleep_for(100ms);
     int err = perf_buffer__poll(_perf_buff, 100);
-    ASSERT_FALSE(err < 0);
+    EXPECT_FALSE(err == 0);
 }
 
 TEST_F(bpf_test_fixture, write_systemcall)
@@ -149,5 +149,5 @@ TEST_F(bpf_test_fixture, write_systemcall)
     global_event.syscallid = SYS_write;
     std::this_thread::sleep_for(100ms);
     int err = perf_buffer__poll(_perf_buff, 100);
-    ASSERT_FALSE(err < 0);
+    EXPECT_FALSE(err == 0);
 }
