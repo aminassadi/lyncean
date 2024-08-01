@@ -72,3 +72,18 @@ std::string realastic_impl::serialize_write_event(struct_write_syscall *event)
     ss << ") = " << event->rc;
     return ss.str();
 }
+
+std::string realastic_impl::serialize_open_event(struct_open_syscall *event)
+{
+    std::string buff;
+    if (event->rc > 0)
+    {
+        buff = std::move(escape_special_charachter(std::string(event->pathname)));
+        buff += "\"";
+    }
+
+    std::stringstream ss;
+    ss << "open(" << event->rc << ", \"" << buff << ", ";
+    ss << ") = " << event->rc;
+    return ss.str();
+}
