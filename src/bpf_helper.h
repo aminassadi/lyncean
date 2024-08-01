@@ -13,12 +13,12 @@ static constexpr std::array<int, 4> kActiveSyscalls{
     SYS_openat,
 };
 
-inline static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
+static inline int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
     return vfprintf(stderr, format, args);
 }
 
-inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
+static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
 {
     auto skel{lynceanbpf_bpf::open()};
     if (skel == nullptr)
@@ -72,7 +72,7 @@ inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
     return std::nullopt;
 }
 
-bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf)
+static inline bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf)
 {
     auto config_fd{bpf_map__fd(skel->maps.config_map)};
     if (config_fd == -1)
@@ -86,4 +86,5 @@ bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf)
     }
     return true;
 }
+
 #endif

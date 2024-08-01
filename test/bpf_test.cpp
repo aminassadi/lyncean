@@ -77,19 +77,16 @@ private:
         auto skel{load_bpf_skeleton()};
         ASSERT_TRUE(skel.has_value());
         _skel = skel.value();
-       // ASSERT_TRUE(set_active_syscalls_config());
         _perf_buff = perf_buffer__new(bpf_map__fd(_skel->maps.perf_buff), 1024, global_handle_event, NULL, NULL, NULL);
         ASSERT_TRUE(_perf_buff);
     }
 
 protected:
-    static lynceanbpf_bpf *_skel;
-    static perf_buffer *_perf_buff;
+    lynceanbpf_bpf *_skel;
+    perf_buffer *_perf_buff;
     bpf_test_fixture()
     {
-        // load bfp once
-        if (!_skel)
-            load_bpf();
+        load_bpf();
     }
 
     void SetUp() override
@@ -98,15 +95,9 @@ protected:
 
     void TearDown() override
     {
-        if (_skel)
-        {
-            lynceanbpf_bpf::destroy(_skel);
-        }
+        lynceanbpf_bpf::destroy(_skel);
     }
 };
-
-lynceanbpf_bpf *bpf_test_fixture::_skel = nullptr;
-perf_buffer *bpf_test_fixture::_perf_buff = nullptr;
 
 TEST_F(bpf_test_fixture, read_system_call)
 {
@@ -128,7 +119,6 @@ TEST_F(bpf_test_fixture, read_system_call)
     memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_read_syscall));
     global_event.syscallid = SYS_read;
-    std::this_thread::sleep_for(100ms);
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
 }
@@ -151,7 +141,6 @@ TEST_F(bpf_test_fixture, open_system_call)
     memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_open_syscall));
     global_event.syscallid = SYS_open;
-    std::this_thread::sleep_for(100ms);
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
 }
@@ -175,7 +164,6 @@ TEST_F(bpf_test_fixture, write_systemcall)
     memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_write_syscall));
     global_event.syscallid = SYS_write;
-    std::this_thread::sleep_for(100ms);
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
 }
