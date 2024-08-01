@@ -20,7 +20,7 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
         goto out;
     }
     void *ptr_start = (void *)read_struct;
-    void *ptr_end = (void*)read_struct->buff;
+    void *ptr_end = (void *)read_struct->buff;
     read_struct->fd = args->arg[0];
     read_struct->syscallid = args->syscallid;
     read_struct->count = args->arg[2];
@@ -35,14 +35,15 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
     {
         ptr_end += size;
     }
-    else{
-        BPF_PRINTK("ERROR, tail_raw_syscall_read_exit, bpd_probe_read failed.\n");  
+    else
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_read_exit, bpd_probe_read failed.\n");
     }
     __u64 len = ptr_end - ptr_start;
     int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
     if (ret != 0)
     {
-        BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
     bpf_map_delete_elem(&syscall_args_map, &pidtid);
@@ -68,7 +69,7 @@ int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx)
         goto out;
     }
     void *ptr_start = (void *)write_struct;
-    void *ptr_end = (void*)write_struct->buff;
+    void *ptr_end = (void *)write_struct->buff;
     write_struct->fd = args->arg[0];
     write_struct->syscallid = args->syscallid;
     write_struct->count = args->arg[2];
@@ -84,14 +85,15 @@ int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx)
     {
         ptr_end += size;
     }
-    else{
-        BPF_PRINTK("ERROR, tail_raw_syscall_write_exit, bpd_probe_read failed.\n"); 
-    }   
+    else
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_write_exit, bpd_probe_read failed.\n");
+    }
     __u64 len = ptr_end - ptr_start;
     int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
     if (ret != 0)
     {
-        BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
     bpf_map_delete_elem(&syscall_args_map, &pidtid);
@@ -117,27 +119,28 @@ int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx)
         goto out;
     }
     void *ptr_start = (void *)open_struct;
-    void *ptr_end = (void*)open_struct->pathname;
+    void *ptr_end = (void *)open_struct->pathname;
     open_struct->syscallid = args->syscallid;
     open_struct->flag = args->arg[1];
     open_struct->mode = args->arg[2];
     if (bpf_probe_read(&open_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
-    }    
-    long size=0;
-    if (size = bpf_probe_read_str(open_struct->pathname, MAX_PATH, (void *)args->arg[0]) > 0)
+    }
+    long size = bpf_probe_read_str(open_struct->pathname, MAX_PATH, (void *)args->arg[0]);
+    if (size > 0)
     {
         ptr_end += size;
     }
-    else{
-       BPF_PRINTK("ERROR, tail_raw_syscall_open_exit, bpd_probe_open failed.\n");
+    else
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_open_exit, bpd_probe_open failed.\n");
     }
-     __u64 len = ptr_end - ptr_start;
+    __u64 len = ptr_end - ptr_start;
     int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
     if (ret != 0)
     {
-        BPF_PRINTK("ERROR, output to perf buffer, code: %ld", ret);
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
     bpf_map_delete_elem(&syscall_args_map, &pidtid);
