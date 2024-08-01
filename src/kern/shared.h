@@ -22,10 +22,10 @@ typedef struct
 typedef struct 
 {
     unsigned long syscallid;
-    char pathname[MAX_PATH];
     int flag; //except creat syscall where the flags equal to O_CREAT|O_WRONLY|O_TRUNC
     mode_t mode;
     int rc;
+    char pathname[MAX_PATH];
 } __attribute__((aligned(8))) struct_open_syscall;
 
 typedef struct 

@@ -23,35 +23,34 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
     case SYS_read:
     {
-        auto read_event{reinterpret_cast<struct_read_syscall *>(data)};
+        auto actual_event{reinterpret_cast<struct_read_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_read_syscall *>(global_event.buff)};
-        EXPECT_EQ(read_event->count, expected_event->count);
-        EXPECT_EQ(read_event->fd, expected_event->fd);
-        EXPECT_EQ(read_event->rc, expected_event->rc);
-        EXPECT_EQ(memcmp(read_event->buff, expected_event->buff, read_event->rc), 0);
+        EXPECT_EQ(actual_event->count, expected_event->count);
+        EXPECT_EQ(actual_event->fd, expected_event->fd);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->buff, expected_event->buff, actual_event->rc), 0);
         break;
     }
     case SYS_write:
     {
-        auto write_event{reinterpret_cast<struct_write_syscall *>(data)};
+        auto actual_event{reinterpret_cast<struct_write_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_write_syscall *>(global_event.buff)};
-        EXPECT_EQ(write_event->count, expected_event->count);
-        EXPECT_EQ(write_event->fd, expected_event->fd);
-        EXPECT_EQ(write_event->rc, expected_event->rc);
-        EXPECT_EQ(memcmp(write_event->buff, expected_event->buff, write_event->rc), 0);
+        EXPECT_EQ(actual_event->count, expected_event->count);
+        EXPECT_EQ(actual_event->fd, expected_event->fd);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->buff, expected_event->buff, actual_event->rc), 0);
         break;
     }
     case SYS_open:
     {
-        auto open_event{reinterpret_cast<struct_open_syscall *>(data)};
+        auto actual_event{reinterpret_cast<struct_open_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_open_syscall *>(global_event.buff)};
-        EXPECT_EQ(open_event->flag, expected_event->flag);
-        EXPECT_EQ(open_event->mode, expected_event->mode);
-        EXPECT_EQ(open_event->rc, expected_event->rc);
-        EXPECT_EQ(memcmp(open_event->pathname, expected_event->pathname, MAX_PATH), 0);
+        EXPECT_EQ(actual_event->flag, expected_event->flag);
+        EXPECT_EQ(actual_event->mode, expected_event->mode);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
     }
-
     default:
         break;
     }
@@ -59,12 +58,26 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
 
 class bpf_test_fixture : public ::testing::Test
 {
+public:
+    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = {SYS_open, SYS_read, SYS_write, SYS_openat})
+    {
+        bpf_config_struct conf;
+        memset(conf.active, 0, SYSCALL_COUNT_SIZE);
+        conf.target_pid = getpid();
+        for (auto sys : syscalls)
+        {
+            conf.active[sys] = true;
+        }
+        return set_bpf_config(_skel, conf);
+    }
+
 private:
     void load_bpf()
     {
-        auto skel{load_bpf_skeleton(getpid())};
+        auto skel{load_bpf_skeleton()};
         ASSERT_TRUE(skel.has_value());
         _skel = skel.value();
+       // ASSERT_TRUE(set_active_syscalls_config());
         _perf_buff = perf_buffer__new(bpf_map__fd(_skel->maps.perf_buff), 1024, global_handle_event, NULL, NULL, NULL);
         ASSERT_TRUE(_perf_buff);
     }
@@ -97,7 +110,8 @@ perf_buffer *bpf_test_fixture::_perf_buff = nullptr;
 
 TEST_F(bpf_test_fixture, read_system_call)
 {
-    char *pathname = "./test_files/test_read.txt";
+    EXPECT_TRUE(set_active_syscalls_config({SYS_read}));
+    const char *pathname = "./test_files/test_read.txt";
     int fd = open(pathname, O_RDONLY);
     ASSERT_FALSE(fd < 0);
     std::string buff(40, 0);
@@ -121,16 +135,19 @@ TEST_F(bpf_test_fixture, read_system_call)
 
 TEST_F(bpf_test_fixture, open_system_call)
 {
-    char *pathname = "./test_files/test_read.txt";
+    EXPECT_TRUE(set_active_syscalls_config({SYS_open}));
+    const char *pathname = "./test_files/test_read.txt";
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     int flags = O_RDONLY;
-    int fd = open(pathname, flags, mode);
+    int fd = syscall(SYS_open, pathname, flags, mode);
     ASSERT_FALSE(fd < 0);
     struct_open_syscall event;
     memset(&event, 0, sizeof(struct_open_syscall));
     event.syscallid = SYS_open;
     event.flag = flags;
-    memcpy(event.pathname, pathname, sizeof(pathname));
+    event.rc = fd;
+    event.mode = mode;
+    memcpy(event.pathname, pathname, strlen(pathname));
     memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_open_syscall));
     global_event.syscallid = SYS_open;
@@ -141,7 +158,8 @@ TEST_F(bpf_test_fixture, open_system_call)
 
 TEST_F(bpf_test_fixture, write_systemcall)
 {
-    char *pathname = "./test_files/write_test.txt";
+    EXPECT_TRUE(set_active_syscalls_config({SYS_write}));
+    const char *pathname = "./test_files/write_test.txt";
     int fd = open(pathname, O_WRONLY | O_TRUNC);
     ASSERT_FALSE(fd < 0);
     std::string buff("lyncean open source project.");

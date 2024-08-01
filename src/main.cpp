@@ -102,15 +102,15 @@ int main(int argc, char **argv)
     if (program.is_used("--params"))
     {
         auto tmp = program.get<std::vector<std::string>>("params");
-        for(auto itr = tmp.begin(); itr != tmp.end(); ++itr)
+        for (auto itr = tmp.begin(); itr != tmp.end(); ++itr)
         {
             params += *itr;
-            if(itr != tmp.end())
+            if (itr != tmp.end())
                 break;
             params += " "s;
         }
 
-        if(params == "empty"s)
+        if (params == "empty"s)
         {
             params = ""s;
         }
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
             }
 
             // Execute the command
-            if(params.size())
+            if (params.size())
             {
                 char *argv[] = {command.data(), params.data(), NULL};
                 execvp(argv[0], argv);
@@ -171,11 +171,20 @@ int main(int argc, char **argv)
             std::optional<lynceanbpf_bpf *> skel{};
             try
             {
-                skel =load_bpf_skeleton(pid) ;
+                skel = load_bpf_skeleton();
                 if (!skel.has_value())
                 {
                     exit(EXIT_FAILURE);
                 }
+                bpf_config_struct config{};
+                config.target_pid = pid;
+                memset(config.active, 0, SYSCALL_COUNT_SIZE);
+                for (auto sys : kActiveSyscalls)
+                {
+                    config.active[sys] = true;
+                }
+                set_bpf_config(skel.value(), config);
+
                 realastic_impl sr;
                 bpf_event_handler = std::make_unique<event_handler>(skel.value(), &sr);
                 future = std::async(std::launch::async, &event_handler::start, bpf_event_handler.get());
@@ -223,10 +232,10 @@ int main(int argc, char **argv)
             {
                 future.get();
             }
-            catch(const std::exception& e)
+            catch (const std::exception &e)
             {
                 std::cerr << e.what() << '\n';
-            }            
+            }
 
             printf("Child process finished execution.\n");
             return 0;
@@ -235,11 +244,19 @@ int main(int argc, char **argv)
 
     try
     {
-        auto skel{load_bpf_skeleton(program.get<int>("pid"))};
+        auto skel{load_bpf_skeleton()};
         if (!skel.has_value())
         {
             exit(EXIT_FAILURE);
         }
+        bpf_config_struct config{};
+        config.target_pid = program.get<int>("pid");
+        memset(config.active, 0, SYSCALL_COUNT_SIZE);
+        for (auto sys : kActiveSyscalls)
+        {
+            config.active[sys] = true;
+        }
+        set_bpf_config(skel.value(), config);
         realastic_impl sr;
         bpf_event_handler = std::make_unique<event_handler>(skel.value(), &sr);
         bpf_event_handler->start();

@@ -11,6 +11,8 @@
 #define MAX_CPU 512
 #define MAX_RUNNING_THREADS 4096
 #define NUM_OF_SYSCALLS 512
+#define MAX_EVENT_SIZE (65536 - 24)
+
 struct __raw_tracepoint_args
 {
     __u64 args[0];
@@ -63,26 +65,10 @@ struct
 struct
 {
     __uint(type, BPF_MAP_TYPE_ARRAY);
-    __type(key, uint32_t);
-    __type(value, struct_read_syscall);
+    __uint(key_size, sizeof(uint32_t));
+    __uint(value_size, MAX_EVENT_SIZE);
     __uint(max_entries, MAX_CPU);
-} read_struct_pool SEC(".maps");
-
-struct
-{
-    __uint(type, BPF_MAP_TYPE_ARRAY);
-    __type(key, uint32_t);
-    __type(value, struct_write_syscall);
-    __uint(max_entries, MAX_CPU);
-} write_struct_pool SEC(".maps");
-
-struct
-{
-    __uint(type, BPF_MAP_TYPE_ARRAY);
-    __type(key, uint32_t);
-    __type(value, struct_open_syscall);
-    __uint(max_entries, MAX_CPU);
-} open_struct_pool SEC(".maps");
+} event_pool SEC(".maps");
 
 struct
 {
@@ -94,8 +80,8 @@ struct
 } prog_array_tailcalls SEC(".maps") = {
     .values = {
         [__NR_read] = (void *)&tail_raw_syscall_read_exit,
-        [__NR_write] = (void*)&tail_raw_syscall_write_exit,
-        [__NR_open] = (void*)&tail_raw_syscall_open_exit,
+        [__NR_write] = (void *)&tail_raw_syscall_write_exit,
+        [__NR_open] = (void *)&tail_raw_syscall_open_exit,
     },
 };
 

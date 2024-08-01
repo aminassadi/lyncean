@@ -4,13 +4,21 @@
 #include "lynceanbpf.skel.h"
 #include "bpf/bpf.h"
 #include <optional>
+#include <array>
+
+static constexpr std::array<int, 4> kActiveSyscalls{
+    SYS_read,
+    SYS_write,
+    SYS_open,
+    SYS_openat,
+};
 
 inline static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
     return vfprintf(stderr, format, args);
 }
 
-inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton(int pid)
+inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
 {
     auto skel{lynceanbpf_bpf::open()};
     if (skel == nullptr)
@@ -23,10 +31,6 @@ inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton(int pid)
 #endif
     do
     {
-        bpf_config_struct config;
-        memset(config.active, 1, sizeof(bool) * SYSCALL_COUNT_SIZE); // active all syscalls //todo:
-        config.target_pid = pid;                                     // todo: fix config
-        int key = 0;
         int ret = bpf_program__set_type(skel->progs.tail_raw_syscall_read_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_write_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_open_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
@@ -36,16 +40,17 @@ inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton(int pid)
             std::cerr << "load bpf skeleton failed\n";
             break;
         }
+        bpf_config_struct config{};
+        config.target_pid = 0;
+        memset(config.active, 0, SYSCALL_COUNT_SIZE);
         auto config_fd{bpf_map__fd(skel->maps.config_map)};
         if (config_fd == -1)
         {
-            std::cerr << "cannot access to config_map";
             break;
         }
-        ret = bpf_map_update_elem(config_fd, &key, &config, BPF_ANY);
-        if (ret)
+        int key = 0;
+        if (bpf_map_update_elem(config_fd, &key, &config, BPF_ANY))
         {
-            std::cerr << "update config map failed\n";
             break;
         }
         auto raw_sys_enter_link = bpf_program__attach_raw_tracepoint(skel->progs.generic_raw_sys_enter, "sys_enter");
@@ -65,5 +70,20 @@ inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton(int pid)
     } while (false);
     skel->destroy(skel);
     return std::nullopt;
+}
+
+bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf)
+{
+    auto config_fd{bpf_map__fd(skel->maps.config_map)};
+    if (config_fd == -1)
+    {
+        return false;
+    }
+    int key = 0;
+    if (bpf_map_update_elem(config_fd, &key, &conf, BPF_ANY))
+    {
+        return false;
+    }
+    return true;
 }
 #endif
