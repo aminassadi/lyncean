@@ -41,6 +41,16 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(memcmp(write_event->buff, expected_event->buff, write_event->rc), 0);
         break;
     }
+    case SYS_open:
+    {
+        auto open_event{reinterpret_cast<struct_open_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_open_syscall *>(global_event.buff)};
+        EXPECT_EQ(open_event->flag, expected_event->flag);
+        EXPECT_EQ(open_event->mode, expected_event->mode);
+        EXPECT_EQ(open_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(open_event->pathname, expected_event->pathname, MAX_PATH), 0);
+        break;
+    }
 
     default:
         break;
