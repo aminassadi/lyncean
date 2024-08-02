@@ -167,3 +167,21 @@ TEST_F(bpf_test_fixture, write_systemcall)
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
 }
+
+TEST_F(bpf_test_fixture, close_systemcall)
+{
+    EXPECT_TRUE(set_active_syscalls_config({SYS_close}));
+    const char *pathname = "./test_files/write_test.txt";
+    int fd = open(pathname, O_WRONLY | O_TRUNC);
+    ASSERT_FALSE(fd < 0);
+    int rc = syscall(SYS_close, fd);
+    struct_close_syscall event{};
+    memset(&event, 0, sizeof(struct_write_syscall));
+    event.syscallid = SYS_close;
+    event.fd = fd;
+    event.rc = rc;
+    global_event.syscallid = SYS_close;
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+}
