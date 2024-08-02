@@ -129,6 +129,7 @@ TEST_F(bpf_test_fixture, read_system_call)
     global_event.syscallid = SYS_read;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 TEST_F(bpf_test_fixture, open_system_call)
@@ -150,6 +151,7 @@ TEST_F(bpf_test_fixture, open_system_call)
     global_event.syscallid = SYS_open;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 TEST_F(bpf_test_fixture, write_systemcall)
@@ -172,6 +174,7 @@ TEST_F(bpf_test_fixture, write_systemcall)
     global_event.syscallid = SYS_write;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 TEST_F(bpf_test_fixture, close_systemcall)
@@ -190,4 +193,5 @@ TEST_F(bpf_test_fixture, close_systemcall)
     memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }

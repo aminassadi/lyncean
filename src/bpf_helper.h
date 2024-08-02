@@ -6,11 +6,12 @@
 #include <optional>
 #include <array>
 
-static constexpr std::array<int, 4> kActiveSyscalls{
+static constexpr std::array<int, 5> kActiveSyscalls{
     SYS_read,
     SYS_write,
     SYS_open,
     SYS_openat,
+    SYS_close,
 };
 
 static inline int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
