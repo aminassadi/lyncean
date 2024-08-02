@@ -110,7 +110,7 @@ protected:
 
 TEST_F(bpf_test_fixture, read_system_call)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_read}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_read}));
     const char *pathname = "./test_files/test_read.txt";
     int fd = open(pathname, O_RDONLY);
     ASSERT_FALSE(fd < 0);
@@ -134,7 +134,7 @@ TEST_F(bpf_test_fixture, read_system_call)
 
 TEST_F(bpf_test_fixture, open_system_call)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_open}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_open}));
     const char *pathname = "./test_files/test_read.txt";
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     int flags = O_RDONLY;
@@ -156,7 +156,7 @@ TEST_F(bpf_test_fixture, open_system_call)
 
 TEST_F(bpf_test_fixture, write_systemcall)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_write}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_write}));
     const char *pathname = "./test_files/write_test.txt";
     int fd = open(pathname, O_WRONLY | O_TRUNC);
     ASSERT_FALSE(fd < 0);
@@ -179,7 +179,7 @@ TEST_F(bpf_test_fixture, write_systemcall)
 
 TEST_F(bpf_test_fixture, close_systemcall)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_close}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_close}));
     const char *pathname = "./test_files/write_test.txt";
     int fd = open(pathname, O_WRONLY | O_TRUNC);
     ASSERT_FALSE(fd < 0);
