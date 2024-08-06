@@ -6,11 +6,12 @@
 #include <optional>
 #include <array>
 
-static constexpr std::array<int, 4> kActiveSyscalls{
+static constexpr std::array<int, 5> kActiveSyscalls{
     SYS_read,
     SYS_write,
     SYS_open,
     SYS_openat,
+    SYS_close,
 };
 
 static inline int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
@@ -34,6 +35,7 @@ static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
         int ret = bpf_program__set_type(skel->progs.tail_raw_syscall_read_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_write_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_open_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_close_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_object__load(skel->obj);
         if (ret)
         {

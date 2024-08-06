@@ -147,6 +147,40 @@ out:
     return 0;
 }
 
+SEC("lyncean/raw_syscalls/close_exit")
+int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_close_syscall *close_struct = NULL;
+    close_struct = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!close_struct)
+    {
+        BPF_PRINTK("ERROR, lookup from open_struct_pool failed\n");
+        goto out;
+    }
+    close_struct->syscallid = args->syscallid;
+    close_struct->fd = args->arg[0];
+    if (bpf_probe_read(&close_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, close_struct, sizeof(struct_close_syscall));
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    return 0;
+}
+
 SEC("raw_tracepoint/sys_enter")
 int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
 {

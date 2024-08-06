@@ -29,6 +29,7 @@ typedef struct
 int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx);
 
 struct
 {
@@ -82,6 +83,7 @@ struct
         [__NR_read] = (void *)&tail_raw_syscall_read_exit,
         [__NR_write] = (void *)&tail_raw_syscall_write_exit,
         [__NR_open] = (void *)&tail_raw_syscall_open_exit,
+        [__NR_close] = (void *)&tail_raw_syscall_close_exit,
     },
 };
 

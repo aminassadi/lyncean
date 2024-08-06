@@ -7,7 +7,7 @@
 #include <thread>
 
 using namespace std::literals;
-static constexpr size_t kMaximumEventSize{65532};
+static constexpr size_t kMaximumEventSize{65536-24};
 struct event_struct
 {
     char buff[kMaximumEventSize];
@@ -51,6 +51,14 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
     }
+    case SYS_close:
+    {
+        auto actual_event{reinterpret_cast<struct_close_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_close_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(actual_event->fd, expected_event->fd);
+        break;
+    }        
     default:
         break;
     }
@@ -91,6 +99,7 @@ protected:
 
     void SetUp() override
     {
+        memset(&global_event, 0, sizeof(event_struct));
     }
 
     void TearDown() override
@@ -101,7 +110,7 @@ protected:
 
 TEST_F(bpf_test_fixture, read_system_call)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_read}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_read}));
     const char *pathname = "./test_files/test_read.txt";
     int fd = open(pathname, O_RDONLY);
     ASSERT_FALSE(fd < 0);
@@ -116,16 +125,16 @@ TEST_F(bpf_test_fixture, read_system_call)
     event.fd = fd;
     event.rc = ret;
     memcpy(event.buff, buff.data(), ret);
-    memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_read_syscall));
     global_event.syscallid = SYS_read;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 TEST_F(bpf_test_fixture, open_system_call)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_open}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_open}));
     const char *pathname = "./test_files/test_read.txt";
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     int flags = O_RDONLY;
@@ -138,16 +147,16 @@ TEST_F(bpf_test_fixture, open_system_call)
     event.rc = fd;
     event.mode = mode;
     memcpy(event.pathname, pathname, strlen(pathname));
-    memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_open_syscall));
     global_event.syscallid = SYS_open;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 TEST_F(bpf_test_fixture, write_systemcall)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_write}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_write}));
     const char *pathname = "./test_files/write_test.txt";
     int fd = open(pathname, O_WRONLY | O_TRUNC);
     ASSERT_FALSE(fd < 0);
@@ -161,9 +170,28 @@ TEST_F(bpf_test_fixture, write_systemcall)
     event.fd = fd;
     event.rc = ret;
     memcpy(event.buff, buff.data(), ret);
-    memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_write_syscall));
     global_event.syscallid = SYS_write;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
+}
+
+TEST_F(bpf_test_fixture, close_systemcall)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_close}));
+    const char *pathname = "./test_files/write_test.txt";
+    int fd = open(pathname, O_WRONLY | O_TRUNC);
+    ASSERT_FALSE(fd < 0);
+    int rc = syscall(SYS_close, fd);
+    struct_close_syscall event{};
+    memset(&event, 0, sizeof(struct_close_syscall));
+    event.syscallid = SYS_close;
+    event.fd = fd;
+    event.rc = rc;
+    global_event.syscallid = SYS_close;
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
 }

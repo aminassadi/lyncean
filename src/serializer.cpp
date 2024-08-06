@@ -26,10 +26,10 @@ std::string escape_special_charachter(const std::string &input)
             result += ("\\r");
             break;
         case '\e':
-            result += ("\\e"); //equal to '\u001B'
-            break;       
+            result += ("\\e"); // equal to '\u001B'
+            break;
         default:
-            result.push_back(c);            
+            result.push_back(c);
         }
     }
     return result;
@@ -85,5 +85,12 @@ std::string realastic_impl::serialize_open_event(struct_open_syscall *event)
     std::stringstream ss;
     ss << "open(" << event->rc << ", \"" << buff << ", ";
     ss << ") = " << event->rc;
+    return ss.str();
+}
+
+std::string realastic_impl::serialize_close_event(struct_close_syscall *event)
+{
+    std::stringstream ss;
+    ss << "close(" << event->fd << ") = " << event->rc;
     return ss.str();
 }
