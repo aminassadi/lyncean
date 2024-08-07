@@ -4,10 +4,11 @@
 #define SYSCALL_COUNT_SIZE 512
 #define MAX_DATA_WR_RD 16384
 #define MAX_PATH 4096
+
 typedef struct
 {
-    unsigned int target_pid;
     bool active[SYSCALL_COUNT_SIZE];
+    bool follow_childs;
 } bpf_config_struct;
 
 typedef struct

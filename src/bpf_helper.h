@@ -43,7 +43,7 @@ static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
             break;
         }
         bpf_config_struct config{};
-        config.target_pid = 0;
+        config.follow_childs = false;
         memset(config.active, 0, SYSCALL_COUNT_SIZE);
         auto config_fd{bpf_map__fd(skel->maps.config_map)};
         if (config_fd == -1)
@@ -74,7 +74,7 @@ static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
     return std::nullopt;
 }
 
-static inline bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf)
+static inline bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf, uint32_t target_pid)
 {
     auto config_fd{bpf_map__fd(skel->maps.config_map)};
     if (config_fd == -1)
@@ -83,6 +83,16 @@ static inline bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_s
     }
     int key = 0;
     if (bpf_map_update_elem(config_fd, &key, &conf, BPF_ANY))
+    {
+        return false;
+    }
+    auto process_fd{bpf_map__fd(skel->maps.target_tasks_map)};
+    if(process_fd == -1)
+    {
+        return false;
+    }
+    bool value = true;
+    if(bpf_map_update_elem(process_fd, &target_pid, &value, BPF_ANY))
     {
         return false;
     }

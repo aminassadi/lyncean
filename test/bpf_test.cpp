@@ -7,7 +7,7 @@
 #include <thread>
 
 using namespace std::literals;
-static constexpr size_t kMaximumEventSize{65536-24};
+static constexpr size_t kMaximumEventSize{65536 - 24};
 struct event_struct
 {
     char buff[kMaximumEventSize];
@@ -58,7 +58,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(actual_event->fd, expected_event->fd);
         break;
-    }        
+    }
     default:
         break;
     }
@@ -71,12 +71,11 @@ public:
     {
         bpf_config_struct conf;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
-        conf.target_pid = getpid();
         for (auto sys : syscalls)
         {
             conf.active[sys] = true;
         }
-        return set_bpf_config(_skel, conf);
+        return set_bpf_config(_skel, conf, getpid());
     }
 
 private:
@@ -195,3 +194,24 @@ TEST_F(bpf_test_fixture, close_systemcall)
     EXPECT_FALSE(err == 0);
     close(fd);
 }
+
+// TEST_F(bpf_test_fixture, fork)
+// {
+    
+// }
+
+// TEST_F(bpf_test_fixture, execve)
+// {
+//     pid_t pid = 0;
+//     pid = fork();
+//     ASSERT_FALSE(pid < 0);
+//     if (pid == 0) //child process
+//     {                                             
+//         char *args[] = {"./child_program", NULL}; 
+//         execve(args[0], args, NULL);              
+//     }
+//     else
+//     {         
+//         printf("Parent process continuing...\n");
+//     }
+// }

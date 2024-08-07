@@ -128,7 +128,7 @@ int main(int argc, char **argv)
     else if (command.size())
     {
         std::cout << "\n\ncommand is: " << command << '\n';
-        std::cout << "params is: " << params << '\n\n';
+        std::cout << "params is: " << params << "\n\n";
         signal(SIGINT, handle_terminate_signal);
         signal(SIGTERM, handle_terminate_signal);
 
@@ -177,13 +177,12 @@ int main(int argc, char **argv)
                     exit(EXIT_FAILURE);
                 }
                 bpf_config_struct config{};
-                config.target_pid = pid;
                 memset(config.active, 0, SYSCALL_COUNT_SIZE);
                 for (auto sys : kActiveSyscalls)
                 {
                     config.active[sys] = true;
                 }
-                set_bpf_config(skel.value(), config);
+                set_bpf_config(skel.value(), config, pid);
 
                 realastic_impl sr;
                 bpf_event_handler = std::make_unique<event_handler>(skel.value(), &sr);
@@ -250,13 +249,12 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
         bpf_config_struct config{};
-        config.target_pid = program.get<int>("pid");
         memset(config.active, 0, SYSCALL_COUNT_SIZE);
         for (auto sys : kActiveSyscalls)
         {
             config.active[sys] = true;
         }
-        set_bpf_config(skel.value(), config);
+        set_bpf_config(skel.value(), config, program.get<int>("pid"));
         realastic_impl sr;
         bpf_event_handler = std::make_unique<event_handler>(skel.value(), &sr);
         bpf_event_handler->start();

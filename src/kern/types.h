@@ -10,6 +10,7 @@
 #include "asm/unistd_64.h"
 #define MAX_CPU 512
 #define MAX_RUNNING_THREADS 4096
+#define MAX_SUBPROCESS 512
 #define NUM_OF_SYSCALLS 512
 #define MAX_EVENT_SIZE (65536 - 24)
 
@@ -46,6 +47,14 @@ struct
     __type(key, uint64_t);
     __type(value, syscall_args);
 } syscall_args_map SEC(".maps");
+
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_SUBPROCESS);
+    __type(key, uint32_t);
+    __type(value, bool);
+} target_tasks_map SEC(".maps");
 
 struct
 {

@@ -196,8 +196,13 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t pid = pidtid >> 32;
-    if (config->active[syscallid & (SYSCALL_COUNT_SIZE - 1)] && config->target_pid == pid)
+    bool *target_pid_active_token = NULL;
+    target_pid_active_token = bpf_map_lookup_elem(&target_tasks_map, &pid);
+    if (!target_pid_active_token)
+        return 0;
+    if (config->active[syscallid & (SYSCALL_COUNT_SIZE - 1)] && *target_pid_active_token)
     {
+        BPF_PRINTK("new syscall\n");
         syscall_args *args = NULL;
         args = bpf_map_lookup_elem(&syscall_args_pool, &cpu);
         if (!args)
@@ -205,7 +210,6 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
             BPF_PRINTK("ERROR, cannot retrieve from args pool\n");
             return 0;
         }
-        memset(args, 0, sizeof(syscall_args));
         args->syscallid = syscallid;
         const struct pt_regs *regs = (const struct pt_regs *)ctx->args[0];
         if (!set_args(args->arg, regs))

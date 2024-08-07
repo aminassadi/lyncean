@@ -1,6 +1,11 @@
 project(lyncean_test LANGUAGES CXX)
 set(SOURCE main.cpp)
 list(APPEND SOURCE bpf_test.cpp)
+
+execute_process(COMMAND cc test_programm.c -o test
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test_files/
+                    )
+
 add_executable(${PROJECT_NAME} ${SOURCE})
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test_files
