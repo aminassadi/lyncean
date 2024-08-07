@@ -59,6 +59,12 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(actual_event->fd, expected_event->fd);
         break;
     }
+    case SYS_fork:
+    {
+        auto actual_event{reinterpret_cast<struct_fork_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_fork_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+    }
     default:
         break;
     }
@@ -67,7 +73,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
 class bpf_test_fixture : public ::testing::Test
 {
 public:
-    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = {SYS_open, SYS_read, SYS_write, SYS_openat})
+    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork})
     {
         bpf_config_struct conf;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
@@ -195,10 +201,27 @@ TEST_F(bpf_test_fixture, close_systemcall)
     close(fd);
 }
 
-// TEST_F(bpf_test_fixture, fork)
-// {
-    
-// }
+TEST_F(bpf_test_fixture, fork_systemcall)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_fork}));
+    pid_t pid = 0;
+    pid = syscall(SYS_fork);
+    ASSERT_FALSE(pid < 0);
+    if (pid == 0) // child process
+    {
+        exit(0);
+    }
+    else
+    {
+        struct_fork_syscall event;
+        memset(&event, 0, sizeof(struct_fork_syscall));
+        event.rc = pid;
+        global_event.syscallid = SYS_fork;
+        memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+        int err = perf_buffer__poll(_perf_buff, 100);
+        EXPECT_FALSE(err == 0);
+    }
+}
 
 // TEST_F(bpf_test_fixture, execve)
 // {
@@ -206,12 +229,12 @@ TEST_F(bpf_test_fixture, close_systemcall)
 //     pid = fork();
 //     ASSERT_FALSE(pid < 0);
 //     if (pid == 0) //child process
-//     {                                             
-//         char *args[] = {"./child_program", NULL}; 
-//         execve(args[0], args, NULL);              
+//     {
+//         char *args[] = {"./child_program", NULL};
+//         execve(args[0], args, NULL);
 //     }
 //     else
-//     {         
+//     {
 //         printf("Parent process continuing...\n");
 //     }
 // }

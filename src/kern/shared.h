@@ -45,5 +45,11 @@ typedef struct
     unsigned long rc;
 }__attribute__((aligned(8))) struct_close_syscall;
 
+typedef struct
+{
+    unsigned long syscallid;
+    unsigned long rc;
+}__attribute__((aligned(8))) struct_fork_syscall;
+
 
 #endif
