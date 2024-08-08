@@ -1,21 +1,21 @@
 #include "input_parser.h"
 #include <stdlib.h>
 
-std::tuple<int, std::string, std::vector<std::string>> InputParser::GetInputParameters(int argc, ARGV &argv)
+std::tuple<int, std::string, std::vector<std::string>> InputParser::get_input_parameters(int argc, ARGV &argv)
 {
     argparse::ArgumentParser parser("lyncean");
-    RegisterPid(parser);
-    RegisterCommand(parser);
-    ApplyParser(parser, argc, argv);
-    auto optionalPid = ExtractPid(parser);
-    auto optionalCmd = ExtractCommand(parser);
-    CheckInputs(parser, optionalPid, optionalCmd);
-    auto pid = GetPidValue(optionalPid);
-    auto [command, params] = separateCommandAndParams(optionalCmd);
+    register_pid(parser);
+    register_command(parser);
+    apply_parser(parser, argc, argv);
+    auto optionalPid = extract_pid(parser);
+    auto optionalCmd = extract_command(parser);
+    check_inputs(parser, optionalPid, optionalCmd);
+    auto pid = get_pid_value(optionalPid);
+    auto [command, params] = separate_command_params(optionalCmd);
     return {pid, command, params};
 }
 
-void InputParser::RegisterPid(Parser &parser)
+void InputParser::register_pid(Parser &parser)
 {
     parser.add_argument("--pid")
         .default_value(0)
@@ -43,7 +43,7 @@ void InputParser::RegisterPid(Parser &parser)
             } });
 }
 
-void InputParser::RegisterCommand(Parser &parser)
+void InputParser::register_command(Parser &parser)
 {
     parser.add_argument("--command")
         .default_value(std::vector<std::string>({"empty"}))
@@ -51,7 +51,7 @@ void InputParser::RegisterCommand(Parser &parser)
         .remaining();
 }
 
-void InputParser::ApplyParser(Parser &parser, int argc, ARGV &argv)
+void InputParser::apply_parser(Parser &parser, int argc, ARGV &argv)
 {
     try
     {
@@ -66,7 +66,7 @@ void InputParser::ApplyParser(Parser &parser, int argc, ARGV &argv)
     }
 }
 
-std::optional<int> InputParser::ExtractPid(Parser &parser)
+std::optional<int> InputParser::extract_pid(Parser &parser)
 {
     if (parser.is_used("--pid"))
     {
@@ -79,7 +79,7 @@ std::optional<int> InputParser::ExtractPid(Parser &parser)
     return std::nullopt;
 }
 
-std::optional<std::string> InputParser::ExtractCommand(Parser &parser)
+std::optional<std::string> InputParser::extract_command(Parser &parser)
 {
     if (parser.is_used("--command"))
     {
@@ -102,7 +102,7 @@ std::optional<std::string> InputParser::ExtractCommand(Parser &parser)
     return std::nullopt;
 }
 
-void InputParser::CheckInputs(Parser &parser, std::optional<int> pid, std::optional<std::string> cmd)
+void InputParser::check_inputs(Parser &parser, std::optional<int> pid, std::optional<std::string> cmd)
 {
     if (!pid && !cmd)
     {
@@ -113,7 +113,7 @@ void InputParser::CheckInputs(Parser &parser, std::optional<int> pid, std::optio
     }
 }
 
-std::tuple<std::string, std::vector<std::string>> InputParser::separateCommandAndParams(std::optional<std::string> cmd)
+std::tuple<std::string, std::vector<std::string>> InputParser::separate_command_params(std::optional<std::string> cmd)
 {
     std::string command{};
     std::vector<std::string> params{};
@@ -148,7 +148,7 @@ std::tuple<std::string, std::vector<std::string>> InputParser::separateCommandAn
     return {command, params};
 }
 
-int InputParser::GetPidValue(std::optional<int> pid)
+int InputParser::get_pid_value(std::optional<int> pid)
 {
     if(pid)
     {

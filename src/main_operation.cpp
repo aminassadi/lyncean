@@ -1,12 +1,12 @@
 #include "main_operation.h"
 
-void MainOperaion::SyncTask(std::optional<lynceanbpf_bpf *> &skel,
+void MainOperaion::run_sync_task(std::optional<lynceanbpf_bpf *> &skel,
                             std::unique_ptr<event_handler> &bpf_event_handler,
                             realastic_impl &serializer, int pid)
 {
     try
     {
-        MainOperaion::Initialize(skel, pid);
+        MainOperaion::initialize(skel, pid);
         bpf_event_handler = std::move(std::make_unique<event_handler>(skel.value(), &serializer));
         bpf_event_handler->start();
         lynceanbpf_bpf::destroy(skel.value());
@@ -18,7 +18,7 @@ void MainOperaion::SyncTask(std::optional<lynceanbpf_bpf *> &skel,
     }
 }
 
-void MainOperaion::AsyncTask(std::optional<lynceanbpf_bpf *> &skel,
+void MainOperaion::run_async_task(std::optional<lynceanbpf_bpf *> &skel,
                              std::unique_ptr<event_handler> &bpf_event_handler,
                              realastic_impl &serializer, int pid)
 {
@@ -26,7 +26,7 @@ void MainOperaion::AsyncTask(std::optional<lynceanbpf_bpf *> &skel,
 
     try
     {
-        MainOperaion::Initialize(skel, pid);
+        MainOperaion::initialize(skel, pid);
         bpf_event_handler = std::move(std::make_unique<event_handler>(skel.value(), &serializer));
         future = std::async(std::launch::async, &event_handler::start, bpf_event_handler.get());
     }
@@ -80,7 +80,7 @@ void MainOperaion::AsyncTask(std::optional<lynceanbpf_bpf *> &skel,
     printf("Child process finished execution.\n");
 }
 
-void MainOperaion::ChildOperaion(std::string &command, std::vector<std::string> &params)
+void MainOperaion::child_operaion(std::string &command, std::vector<std::string> &params)
 {
     perror("Child started!\n");
     if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1)
@@ -110,7 +110,7 @@ void MainOperaion::ChildOperaion(std::string &command, std::vector<std::string> 
     exit(1);
 }
 
-void MainOperaion::Initialize(std::optional<lynceanbpf_bpf *> &skel, int pid)
+void MainOperaion::initialize(std::optional<lynceanbpf_bpf *> &skel, int pid)
 {
     skel = load_bpf_skeleton();
     if (!skel.has_value())

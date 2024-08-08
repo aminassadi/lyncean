@@ -22,14 +22,14 @@ static void handle_terminate_signal(int sig)
 
 int main(int argc, char **argv)
 {
-    auto [pid, command, params] = InputParser::GetInputParameters(argc, argv);
+    auto [pid, command, params] = InputParser::get_input_parameters(argc, argv);
 
     signal(SIGINT, handle_terminate_signal);
     signal(SIGTERM, handle_terminate_signal);
 
     if (pid)
     {
-        MainOperaion::SyncTask(skel, bpf_event_handler, sr, pid);
+        MainOperaion::run_sync_task(skel, bpf_event_handler, sr, pid);
         return 0;
     }
 
@@ -42,10 +42,10 @@ int main(int argc, char **argv)
     }
     else if (pid == 0)
     {
-        MainOperaion::ChildOperaion(command, params);
+        MainOperaion::child_operaion(command, params);
     }
     else
     {
-        MainOperaion::AsyncTask(skel, bpf_event_handler, sr, pid);
+        MainOperaion::run_async_task(skel, bpf_event_handler, sr, pid);
     }
 }
