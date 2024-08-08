@@ -94,11 +94,10 @@ std::optional<std::string> InputParser::ExtractCommand(Parser &parser)
             command += " "s;
         }
 
-        if (command == "empty"s)
+        if (command != "empty"s)
         {
-            command = ""s;
+            return command;
         }
-        return command;
     }
     return std::nullopt;
 }

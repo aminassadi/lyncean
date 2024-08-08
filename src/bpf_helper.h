@@ -5,6 +5,8 @@
 #include "bpf/bpf.h"
 #include <optional>
 #include <array>
+#include <iostream>
+#include <syscall.h>
 
 static constexpr std::array<int, 5> kActiveSyscalls{
     SYS_read,
