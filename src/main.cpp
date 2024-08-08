@@ -5,13 +5,13 @@
 #include <signal.h>
 #include <memory>
 #include "event_handler.h"
-#include "argparse/argparse.hpp"
 #include "bpf_helper.h"
 #include <string>
 #include <future>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 #include "serializer.h"
+#include "input_parser.h"
 
 using namespace std::literals;
 
@@ -25,110 +25,9 @@ static void handle_terminate_signal(int sig)
 
 int main(int argc, char **argv)
 {
-    argparse::ArgumentParser program("lyncean");
-
-    program.add_argument("--pid")
-        .default_value(0)
-        .help("whcih process id to watching.")
-        .action([](const std::string &value)
-                {
-            try 
-            {
-                auto tmp = std::stoi(value);
-                if(tmp < 0)
-                {
-                    throw std::invalid_argument("");
-                }
-                return tmp;
-            } 
-            catch (const std::invalid_argument &) 
-            {
-                std::cerr << "Error: --pid requires an integer value greater than zero." << std::endl;
-                exit(EXIT_FAILURE);
-            } 
-            catch (const std::out_of_range &) 
-            {
-                std::cerr << "Error: --pid value is out of range." << std::endl;
-                exit(EXIT_FAILURE);
-            } });
-
-    program.add_argument("--command")
-        .default_value(std::string(""))
-        .help("The command to execute");
-
-    program.add_argument("--params")
-        .default_value(std::vector<std::string>({"empty"}))
-        .help("Parameters for the command")
-        .remaining();
-
-    try
+    auto [pid, command, params] = InputParser::GetInputParameters(argc, argv);
+    if (!pid)
     {
-        program.parse_args(argc, argv);
-    }
-    catch (const std::runtime_error &err)
-    {
-        std::cerr << "Error parsing arguments: " << err.what() << std::endl;
-        std::cerr << program;
-        return EXIT_FAILURE;
-    }
-
-    if (!program.is_used("--pid") && !program.is_used("--command"))
-    {
-        std::cerr << "Error: You must specify exactly one of --pid or --command." << std::endl;
-        std::cerr << program;
-        return EXIT_FAILURE;
-    }
-
-    int pid{};
-    if (program.is_used("--pid"))
-    {
-        pid = program.get<int>("pid");
-    }
-
-    std::string command{};
-    if (program.is_used("--command"))
-    {
-        command = program.get<std::string>("command");
-    }
-
-    if (!pid && command.empty())
-    {
-        std::cerr << "Error: You must specify exactly one of --pid or --command." << std::endl;
-        std::cerr << program;
-        return EXIT_FAILURE;
-    }
-
-    std::string params{};
-    if (program.is_used("--params"))
-    {
-        auto tmp = program.get<std::vector<std::string>>("params");
-        for (auto itr = tmp.begin(); itr != tmp.end(); ++itr)
-        {
-            params += *itr;
-            if (itr != tmp.end())
-                break;
-            params += " "s;
-        }
-
-        if (params == "empty"s)
-        {
-            params = ""s;
-        }
-    }
-
-    if (pid && command.empty())
-    {
-        std::cout << "Your entered pid is: " << pid << '\n';
-    }
-    else if (pid && command.size())
-    {
-        std::cerr << "Warning: You entered both --pid and --command, so the code works based on --pid!\n";
-        std::cout << "Your entered pid is: " << pid << '\n';
-    }
-    else if (command.size())
-    {
-        std::cout << "\n\ncommand is: " << command << '\n';
-        std::cout << "params is: " << params << '\n\n';
         signal(SIGINT, handle_terminate_signal);
         signal(SIGTERM, handle_terminate_signal);
 
@@ -150,7 +49,6 @@ int main(int argc, char **argv)
                 exit(1);
             }
 
-            // Execute the command
             if (params.size())
             {
                 char *argv[] = {command.data(), params.data(), NULL};
@@ -162,7 +60,6 @@ int main(int argc, char **argv)
                 execvp(argv[0], argv);
             }
 
-            // If execvp fails
             perror("execvp failed!!!\n");
             exit(1);
         }
@@ -192,7 +89,6 @@ int main(int argc, char **argv)
             catch (const std::exception &err)
             {
                 std::cerr << err.what() << std::endl;
-                std::cerr << program;
                 std::exit(1);
             }
 
@@ -250,7 +146,7 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
         bpf_config_struct config{};
-        config.target_pid = program.get<int>("pid");
+        config.target_pid = pid;
         memset(config.active, 0, SYSCALL_COUNT_SIZE);
         for (auto sys : kActiveSyscalls)
         {
@@ -265,7 +161,6 @@ int main(int argc, char **argv)
     catch (const std::exception &err)
     {
         std::cerr << err.what() << std::endl;
-        std::cerr << program;
         std::exit(1);
     }
 }

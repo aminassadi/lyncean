@@ -8,10 +8,12 @@ add_custom_target(
 )
 
 set(SOURCE main.cpp)
+list(APPEND SOURCE pch.cpp)
 list(APPEND SOURCE event_handler.cpp)
 list(APPEND SOURCE bpf_helper.h)
 list(APPEND SOURCE serializer.h)
 list(APPEND SOURCE serializer.cpp) 
+list(APPEND SOURCE input_parser.cpp) 
 
 add_executable(${PROJECT_NAME} ${SOURCE})
 add_dependencies(${PROJECT_NAME}  bpf_skeleton)
