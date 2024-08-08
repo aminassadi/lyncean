@@ -51,8 +51,14 @@ int main(int argc, char **argv)
 
             if (params.size())
             {
-                char *argv[] = {command.data(), params.data(), NULL};
-                execvp(argv[0], argv);
+                std::vector<char*> argv;
+                argv.push_back(command.data());
+                for (auto &arg : params)
+                {
+                    argv.push_back(&arg[0]);
+                }
+                argv.push_back(NULL);
+                execvp(argv[0], argv.data());
             }
             else
             {

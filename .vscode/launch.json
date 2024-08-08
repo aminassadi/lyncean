@@ -9,7 +9,9 @@
           "args": [
               "--command",
               "ls",
-              "-hali"
+              "-h",
+              " -a",
+              "-li  "
           ],
           "stopAtEntry": false,
           "cwd": "${workspaceFolder}",

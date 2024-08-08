@@ -1,7 +1,7 @@
 #include "input_parser.h"
 #include <stdlib.h>
 
-std::tuple<int, std::string, std::string> InputParser::GetInputParameters(int argc, ARGV &argv)
+std::tuple<int, std::string, std::vector<std::string>> InputParser::GetInputParameters(int argc, ARGV &argv)
 {
     argparse::ArgumentParser parser("lyncean");
     RegisterPid(parser);
@@ -114,10 +114,11 @@ void InputParser::CheckInputs(Parser &parser, std::optional<int> pid, std::optio
     }
 }
 
-std::tuple<std::string, std::string> InputParser::separateCommandAndParams(std::optional<std::string> cmd)
+std::tuple<std::string, std::vector<std::string>> InputParser::separateCommandAndParams(std::optional<std::string> cmd)
 {
     std::string command{};
-    std::string params{};
+    std::vector<std::string> params{};
+    std::string tmpParams{};
 
     if (cmd.has_value())
     {
@@ -127,8 +128,22 @@ std::tuple<std::string, std::string> InputParser::separateCommandAndParams(std::
         size_t rest = tmp.find_first_not_of(' ', firstSpace);
         if (rest != std::string::npos)
         {
-            params = tmp.substr(rest);
+            tmpParams = tmp.substr(rest);
         }
+    }
+
+    size_t pos = 0;
+    std::string token;
+    while ((pos = tmpParams.find(' ')) != std::string::npos) 
+    {
+        token = tmpParams.substr(0, pos);
+        if (!token.empty()) {
+            params.push_back(token);
+        }
+        tmpParams.erase(0, pos + 1);
+    }
+    if (!tmpParams.empty()) {
+        params.push_back(tmpParams);
     }
 
     return {command, params};
