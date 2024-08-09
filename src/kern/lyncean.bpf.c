@@ -181,6 +181,70 @@ out:
     return 0;
 }
 
+SEC("lyncean/raw_syscalls/fork_exit")
+int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_fork_syscall *fork_struct = NULL;
+    fork_struct = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!fork_struct)
+    {
+        BPF_PRINTK("ERROR, lookup from event_pool failed\n");
+        goto out;
+    }
+    if (bpf_probe_read(&fork_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+    fork_struct->syscallid = args->syscallid;
+    bpf_config_struct *config = NULL;
+    int config_key = 0;
+    config = bpf_map_lookup_elem(&config_map, &config_key);
+    if (config)
+    {
+        if (config->follow_childs && fork_struct->rc > 0)
+        {
+            bool val = true;
+            if (bpf_map_update_elem(&target_tasks_map, &fork_struct->rc, &val, BPF_ANY))
+            {
+                BPF_PRINTK("cannot update target_task_map\n");
+            }
+        }
+    }
+    else
+    {
+        BPF_PRINTK("ERROR, lookup from config map failed\n");
+    }
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, fork_struct, sizeof(struct_fork_syscall));
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    return 0;
+}
+
+SEC("tracepoint/sched/sched_process_exit")
+int process_exit(void *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    uint32_t pid = pidtid >> 32;
+    uint32_t tid = pidtid << 32;
+    if(pid == tid)
+    {
+        bpf_map_delete_elem(&target_tasks_map, &pid);
+    }
+    return 0;
+}
+
 SEC("raw_tracepoint/sys_enter")
 int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
 {
@@ -196,7 +260,11 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t pid = pidtid >> 32;
-    if (config->active[syscallid & (SYSCALL_COUNT_SIZE - 1)] && config->target_pid == pid)
+    bool *target_pid_active_token = NULL;
+    target_pid_active_token = bpf_map_lookup_elem(&target_tasks_map, &pid);
+    if (!target_pid_active_token)
+        return 0;
+    if (config->active[syscallid & (SYSCALL_COUNT_SIZE - 1)] && *target_pid_active_token)
     {
         syscall_args *args = NULL;
         args = bpf_map_lookup_elem(&syscall_args_pool, &cpu);
@@ -205,7 +273,6 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
             BPF_PRINTK("ERROR, cannot retrieve from args pool\n");
             return 0;
         }
-        memset(args, 0, sizeof(syscall_args));
         args->syscallid = syscallid;
         const struct pt_regs *regs = (const struct pt_regs *)ctx->args[0];
         if (!set_args(args->arg, regs))

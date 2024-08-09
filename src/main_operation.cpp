@@ -118,11 +118,10 @@ void MainOperaion::initialize(std::optional<lynceanbpf_bpf *> &skel, int pid)
         std::exit(1);
     }
     bpf_config_struct config{};
-    config.target_pid = pid;
     memset(config.active, 0, SYSCALL_COUNT_SIZE);
     for (auto sys : kActiveSyscalls)
     {
         config.active[sys] = true;
     }
-    set_bpf_config(skel.value(), config);
+    set_bpf_config(skel.value(), config, pid);
 }

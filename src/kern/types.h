@@ -10,6 +10,7 @@
 #include "asm/unistd_64.h"
 #define MAX_CPU 512
 #define MAX_RUNNING_THREADS 4096
+#define MAX_SUBPROCESS 512
 #define NUM_OF_SYSCALLS 512
 #define MAX_EVENT_SIZE (65536 - 24)
 
@@ -30,6 +31,7 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx);
 
 struct
 {
@@ -46,6 +48,14 @@ struct
     __type(key, uint64_t);
     __type(value, syscall_args);
 } syscall_args_map SEC(".maps");
+
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_SUBPROCESS);
+    __type(key, uint32_t);
+    __type(value, bool);
+} target_tasks_map SEC(".maps");
 
 struct
 {
@@ -84,6 +94,7 @@ struct
         [__NR_write] = (void *)&tail_raw_syscall_write_exit,
         [__NR_open] = (void *)&tail_raw_syscall_open_exit,
         [__NR_close] = (void *)&tail_raw_syscall_close_exit,
+        [__NR_fork] = (void*)&tail_raw_syscall_fork_exit,
     },
 };
 
