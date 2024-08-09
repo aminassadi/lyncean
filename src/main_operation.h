@@ -5,7 +5,7 @@
 #include "event_handler.h"
 #include "bpf_helper.h"
 
-class MainOperaion
+class main_operation
 {
 public:
     static void initialize(std::optional<lynceanbpf_bpf *> &skel, int pid);

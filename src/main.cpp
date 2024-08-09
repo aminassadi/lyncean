@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 
     if (pid)
     {
-        MainOperaion::run_sync_task(skel, bpf_event_handler, sr, pid);
+        main_operation::run_sync_task(skel, bpf_event_handler, sr, pid);
         return 0;
     }
 
@@ -42,10 +42,10 @@ int main(int argc, char **argv)
     }
     else if (pid == 0)
     {
-        MainOperaion::child_operaion(command, params);
+        main_operation::child_operaion(command, params);
     }
     else
     {
-        MainOperaion::run_async_task(skel, bpf_event_handler, sr, pid);
+        main_operation::run_async_task(skel, bpf_event_handler, sr, pid);
     }
 }
