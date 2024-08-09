@@ -223,18 +223,7 @@ TEST_F(bpf_test_fixture, fork_systemcall)
     }
 }
 
-// TEST_F(bpf_test_fixture, execve)
+// TEST_F(bpf_test_fixture, clone_syscall)
 // {
-//     pid_t pid = 0;
-//     pid = fork();
-//     ASSERT_FALSE(pid < 0);
-//     if (pid == 0) //child process
-//     {
-//         char *args[] = {"./child_program", NULL};
-//         execve(args[0], args, NULL);
-//     }
-//     else
-//     {
-//         printf("Parent process continuing...\n");
-//     }
+//     clone
 // }
