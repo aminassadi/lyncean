@@ -4,6 +4,7 @@
 #define SYSCALL_COUNT_SIZE 512
 #define MAX_DATA_WR_RD 16384
 #define MAX_PATH 4096
+#define MAX_ARGS 16384
 
 typedef struct
 {
@@ -48,8 +49,18 @@ typedef struct
 typedef struct
 {
     unsigned long syscallid;
+    int flags;
+    uint32_t size_args;
     unsigned long rc;
-}__attribute__((aligned(8))) struct_fork_syscall;
+    char args[MAX_ARGS];
+}__attribute__((aligned(8))) struct_clone_syscall;
+
+typedef struct
+{
+    unsigned long syscallid;
+    unsigned long rc;
+
+}
 
 
 #endif

@@ -223,7 +223,31 @@ TEST_F(bpf_test_fixture, fork_systemcall)
     }
 }
 
-// TEST_F(bpf_test_fixture, clone_syscall)
-// {
-//     clone
-// }
+static int child_func(void *arg)
+{
+    execl("/bin/ls", "ls", NULL);
+    return 0; /* Child terminates now */
+}
+
+TEST_F(bpf_test_fixture, clone_syscall)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_clone}));
+    pid_t pid{0};
+    unsigned long flags = CLONE_NEWNS | CLONE_NEWPID;
+    void *stack{nullptr};
+    size_t stack_size = 1024 * 1024;
+    stack = malloc(stack_size);
+    ASSERT_TRUE(stack);
+    // Create the child process
+    pid = clone(child_func, stack + stack_size, flags, NULL);
+    ASSERT_FALSE(pid<0); 
+    waitpid(pid, NULL, 0);
+    free(stack);
+    struct_fork_syscall event;
+    memset(&event, 0, sizeof(struct_fork_syscall));
+    event.rc = pid;
+    global_event.syscallid = SYS_fork;
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+}

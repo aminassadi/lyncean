@@ -27,25 +27,18 @@ int main(int argc, char **argv)
     signal(SIGINT, handle_terminate_signal);
     signal(SIGTERM, handle_terminate_signal);
 
-    if (pid)
+    if (!pid)
     {
-        main_operation::run_sync_task(skel, bpf_event_handler, sr, pid);
-        return 0;
+        pid = fork();
+        if (pid < 0)
+        {
+            perror("Fork failed");
+            return 1;
+        }
+        else if (pid == 0)
+        {
+            main_operation::child_operaion(command, params);
+        }
     }
-
-    pid = fork();
-
-    if (pid < 0)
-    {
-        perror("Fork failed");
-        return 1;
-    }
-    else if (pid == 0)
-    {
-        main_operation::child_operaion(command, params);
-    }
-    else
-    {
-        main_operation::run_async_task(skel, bpf_event_handler, sr, pid);
-    }
+    main_operation::run_async_task(skel, bpf_event_handler, sr, pid);
 }
