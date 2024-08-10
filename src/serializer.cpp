@@ -88,6 +88,21 @@ std::string realastic_impl::serialize_open_event(struct_open_syscall *event)
     return ss.str();
 }
 
+std::string realastic_impl::serialize_creat_event(struct_creat_syscall *event)
+{
+    std::string buff;
+    if (event->rc > 0)
+    {
+        buff = std::move(escape_special_charachter(std::string(event->pathname)));
+        buff += "\"";
+    }
+
+    std::stringstream ss;
+    ss << "creat(" << event->rc << ", \"" << buff << ", ";
+    ss << ") = " << event->rc;
+    return ss.str();
+}
+
 std::string realastic_impl::serialize_close_event(struct_close_syscall *event)
 {
     std::stringstream ss;
