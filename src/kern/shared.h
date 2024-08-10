@@ -21,22 +21,22 @@ typedef struct
     char buff[MAX_DATA_WR_RD];
 } __attribute__((aligned(8))) struct_read_syscall;
 
-typedef struct 
+typedef struct
 {
     unsigned long syscallid;
-    int flag; //except creat syscall where the flags equal to O_CREAT|O_WRONLY|O_TRUNC
+    int flag; // except creat syscall where the flags equal to O_CREAT|O_WRONLY|O_TRUNC
     mode_t mode;
     int rc;
     char pathname[MAX_PATH];
 } __attribute__((aligned(8))) struct_open_syscall;
 
-typedef struct 
+typedef struct
 {
     unsigned long syscallid;
     int fd;
     unsigned long count;
     unsigned long rc;
-    char buff[MAX_DATA_WR_RD];    
+    char buff[MAX_DATA_WR_RD];
 } __attribute__((aligned(8))) struct_write_syscall;
 
 typedef struct
@@ -44,7 +44,13 @@ typedef struct
     unsigned long syscallid;
     int fd;
     unsigned long rc;
-}__attribute__((aligned(8))) struct_close_syscall;
+} __attribute__((aligned(8))) struct_close_syscall;
+
+typedef struct
+{
+    unsigned long syscallid;
+    int rc;
+} __attribute__((aligned(8))) struct_fork_syscall;
 
 typedef struct
 {
@@ -53,14 +59,5 @@ typedef struct
     uint32_t size_args;
     unsigned long rc;
     char args[MAX_ARGS];
-}__attribute__((aligned(8))) struct_clone_syscall;
-
-typedef struct
-{
-    unsigned long syscallid;
-    unsigned long rc;
-
-}
-
-
+} __attribute__((aligned(8))) struct_clone_syscall;
 #endif

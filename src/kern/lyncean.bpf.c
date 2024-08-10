@@ -4,9 +4,9 @@
 SEC("lyncean/raw_syscalls/read_exit")
 int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
 {
-    uint64_t pidtid = bpf_get_current_pid_tgid();
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
     syscall_args *args = NULL;
-    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtgid);
     if (!args)
     {
         return 0;
@@ -46,16 +46,16 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
-    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    bpf_map_delete_elem(&syscall_args_map, &pidtgid);
     return 0;
 }
 
 SEC("lyncean/raw_syscalls/write_exit")
 int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx)
 {
-    uint64_t pidtid = bpf_get_current_pid_tgid();
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
     syscall_args *args = NULL;
-    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtgid);
     if (!args)
     {
         return 0;
@@ -96,16 +96,16 @@ int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
-    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    bpf_map_delete_elem(&syscall_args_map, &pidtgid);
     return 0;
 }
 
 SEC("lyncean/raw_syscalls/open_exit")
 int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx)
 {
-    uint64_t pidtid = bpf_get_current_pid_tgid();
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
     syscall_args *args = NULL;
-    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtgid);
     if (!args)
     {
         return 0;
@@ -143,16 +143,16 @@ int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
-    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    bpf_map_delete_elem(&syscall_args_map, &pidtgid);
     return 0;
 }
 
 SEC("lyncean/raw_syscalls/close_exit")
 int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx)
 {
-    uint64_t pidtid = bpf_get_current_pid_tgid();
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
     syscall_args *args = NULL;
-    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtgid);
     if (!args)
     {
         return 0;
@@ -177,42 +177,42 @@ int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
-    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    bpf_map_delete_elem(&syscall_args_map, &pidtgid);
     return 0;
 }
 
 SEC("lyncean/raw_syscalls/fork_exit")
 int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx)
 {
-    uint64_t pidtid = bpf_get_current_pid_tgid();
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
     syscall_args *args = NULL;
-    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtgid);
     if (!args)
     {
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_fork_syscall *fork_struct = NULL;
-    fork_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!fork_struct)
+    struct_fork_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from event_pool failed\n");
         goto out;
     }
-    if (bpf_probe_read(&fork_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
-    }
-    fork_struct->syscallid = args->syscallid;
+    }   
+    event->syscallid = args->syscallid;
     bpf_config_struct *config = NULL;
-    int config_key = 0;
+    int config_key = 0; 
     config = bpf_map_lookup_elem(&config_map, &config_key);
     if (config)
     {
-        if (config->follow_childs && fork_struct->rc > 0)
+        if (config->follow_childs && event->rc > 0)
         {
             bool val = true;
-            if (bpf_map_update_elem(&target_tasks_map, &fork_struct->rc, &val, BPF_ANY))
+            if (bpf_map_update_elem(&target_tasks_map, &event->rc, &val, BPF_ANY))
             {
                 BPF_PRINTK("cannot update target_task_map\n");
             }
@@ -222,23 +222,70 @@ int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx)
     {
         BPF_PRINTK("ERROR, lookup from config map failed\n");
     }
-    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, fork_struct, sizeof(struct_fork_syscall));
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, event, sizeof(struct_fork_syscall));
     if (ret != 0)
     {
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
     }
 out:
-    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    bpf_map_delete_elem(&syscall_args_map, &pidtgid);
+    return 0;
+}
+
+SEC("lyncean/raw_syscalls/clone_exit")
+int tail_raw_syscall_clone_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtgid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_clone_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
+    {
+        BPF_PRINTK("ERROR, lookup from event_pool failed\n");
+        goto out;
+    }
+    void* ptr_start = event;
+    void* ptr_end = event->args;
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+    event->syscallid = args->syscallid;
+    // todo: add to process map
+    event->flags = args->arg[2];
+    long size = bpf_probe_read_str(event->args, MAX_ARGS, (void *)args->arg[3]);
+    if (size > 0)
+    {
+        ptr_end += size;
+    }
+    else
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_clone_exit, read args failed.\n");
+    }
+     __u64 len = ptr_end - ptr_start;
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtgid);
     return 0;
 }
 
 SEC("tracepoint/sched/sched_process_exit")
 int process_exit(void *ctx)
 {
-    uint64_t pidtid = bpf_get_current_pid_tgid();
-    uint32_t pid = pidtid >> 32;
-    uint32_t tid = pidtid << 32;
-    if(pid == tid)
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
+    uint32_t pid = pidtgid >> 32;
+    uint32_t tid = pidtgid << 32;
+    if (pid == tid)
     {
         bpf_map_delete_elem(&target_tasks_map, &pid);
     }
@@ -248,7 +295,7 @@ int process_exit(void *ctx)
 SEC("raw_tracepoint/sys_enter")
 int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
 {
-    uint64_t pidtid = bpf_get_current_pid_tgid();
+    uint64_t pidtgid = bpf_get_current_pid_tgid();
     uint32_t cpu = bpf_get_smp_processor_id();
     uint32_t syscallid = ctx->args[1];
     bpf_config_struct *config = NULL;
@@ -259,7 +306,7 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, lookup from config map failed\n");
         return 0;
     }
-    uint32_t pid = pidtid >> 32;
+    uint32_t pid = pidtgid >> 32;
     bool *target_pid_active_token = NULL;
     target_pid_active_token = bpf_map_lookup_elem(&target_tasks_map, &pid);
     if (!target_pid_active_token)
@@ -280,7 +327,7 @@ int generic_raw_sys_enter(struct __raw_tracepoint_args *ctx)
             BPF_PRINTK("ERROR, setting syscall args failed\n");
             return 0;
         }
-        if (bpf_map_update_elem(&syscall_args_map, &pidtid, args, BPF_ANY) != 0)
+        if (bpf_map_update_elem(&syscall_args_map, &pidtgid, args, BPF_ANY) != 0)
         {
             BPF_PRINTK("ERROR, failed to update args map\n");
         }
