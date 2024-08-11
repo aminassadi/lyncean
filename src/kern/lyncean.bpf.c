@@ -262,7 +262,7 @@ int tail_raw_syscall_clone_exit(struct __raw_tracepoint_args *ctx)
     config = bpf_map_lookup_elem(&config_map, &config_key);
     if (config)
     {
-        if (config->follow_childs && event->rc > 0 && ((event->flags & CLONE_VM) != CLONE_VM) ) //thread created with CLONE_VM flag
+        if (config->follow_childs && event->rc > 0 && ((event->flags & CLONE_THREAD) != CLONE_THREAD) ) 
         {
             bool val = true;
             if (bpf_map_update_elem(&target_tasks_map, &event->rc, &val, BPF_ANY))

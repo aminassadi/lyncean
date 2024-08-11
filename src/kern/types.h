@@ -28,7 +28,10 @@ typedef struct
 } syscall_args;
 
 #ifndef CLONE_VM
-# define CLONE_VM      0x00000100
+#define CLONE_VM 0x00000100
+#endif
+#ifndef CLONE_THREAD
+#define CLONE_THREAD 0x00010000 /* Set to add to same thread group.  */
 #endif
 int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx);
@@ -98,8 +101,8 @@ struct
         [__NR_write] = (void *)&tail_raw_syscall_write_exit,
         [__NR_open] = (void *)&tail_raw_syscall_open_exit,
         [__NR_close] = (void *)&tail_raw_syscall_close_exit,
-        [__NR_fork] = (void*)&tail_raw_syscall_fork_exit,
-        [__NR_clone] = (void*)&tail_raw_syscall_clone_exit,
+        [__NR_fork] = (void *)&tail_raw_syscall_fork_exit,
+        [__NR_clone] = (void *)&tail_raw_syscall_clone_exit,
     },
 };
 
