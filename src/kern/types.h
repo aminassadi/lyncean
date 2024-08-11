@@ -27,6 +27,9 @@ typedef struct
     unsigned long returncode;
 } syscall_args;
 
+#ifndef CLONE_VM
+# define CLONE_VM      0x00000100
+#endif
 int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx);

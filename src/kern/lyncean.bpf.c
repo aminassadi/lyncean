@@ -202,10 +202,10 @@ int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx)
     if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
-    }   
+    }
     event->syscallid = args->syscallid;
     bpf_config_struct *config = NULL;
-    int config_key = 0; 
+    int config_key = 0;
     config = bpf_map_lookup_elem(&config_map, &config_key);
     if (config)
     {
@@ -256,7 +256,25 @@ int tail_raw_syscall_clone_exit(struct __raw_tracepoint_args *ctx)
     }
     event->syscallid = args->syscallid;
     event->flags = args->arg[0];
-    // todo: add to process map
+    event->syscallid = args->syscallid;
+    bpf_config_struct *config = NULL;
+    int config_key = 0;
+    config = bpf_map_lookup_elem(&config_map, &config_key);
+    if (config)
+    {
+        if (config->follow_childs && event->rc > 0 && ((event->flags & CLONE_VM) != CLONE_VM) ) //thread created with CLONE_VM flag
+        {
+            bool val = true;
+            if (bpf_map_update_elem(&target_tasks_map, &event->rc, &val, BPF_ANY))
+            {
+                BPF_PRINTK("cannot update target_task_map\n");
+            }
+        }
+    }
+    else
+    {
+        BPF_PRINTK("ERROR, lookup from config map failed\n");
+    }
     int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, event, sizeof(struct_clone_syscall));
     if (ret != 0)
     {
