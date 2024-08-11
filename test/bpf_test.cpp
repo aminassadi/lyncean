@@ -72,7 +72,6 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         auto expected_event{reinterpret_cast<struct_clone_syscall *>(global_event.buff)};
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(actual_event->flags, expected_event->flags);
-        //EXPECT_EQ(memcmp(actual_event->args, expected_event->args, strlen(expected_event->args)), 0);
         break;
     }
     default:
@@ -236,7 +235,7 @@ TEST_F(bpf_test_fixture, fork_systemcall)
 
 static int child_func(void *arg)
 {
-   // execl("/bin/ls", "ls", NULL);
+    execl("/bin/ls", "ls", NULL);
     return 0; /* Child terminates now */
 }
 
@@ -244,14 +243,13 @@ TEST_F(bpf_test_fixture, clone_syscall)
 {
     ASSERT_TRUE(set_active_syscalls_config({SYS_clone}));
     pid_t pid{0};
-    unsigned long flags = CLONE_NEWNS | CLONE_NEWPID;
-    const char* args{"arg1 arg2 arg3 arg4 arg5"};
+    int flags = CLONE_NEWNS | CLONE_NEWPID;
     void *stack{nullptr};
     size_t stack_size = 1024 * 1024;
     stack = malloc(stack_size);
     ASSERT_TRUE(stack);
     // Create the child process
-    pid = clone(child_func, stack + stack_size, flags, (void*)args);
+    pid = clone(child_func, stack + stack_size, flags, NULL);
     ASSERT_FALSE(pid<0); 
     waitpid(pid, NULL, 0);
     free(stack);
@@ -260,8 +258,7 @@ TEST_F(bpf_test_fixture, clone_syscall)
     event.rc = pid;
     event.flags = flags;
     global_event.syscallid = SYS_clone;
-    memcpy(event.args, args, strlen(args));
-    memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_clone_syscall));
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
 }

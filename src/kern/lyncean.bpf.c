@@ -250,26 +250,14 @@ int tail_raw_syscall_clone_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, lookup from event_pool failed\n");
         goto out;
     }
-    void* ptr_start = event;
-    void* ptr_end = event->args;
     if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
     event->syscallid = args->syscallid;
+    event->flags = args->arg[0];
     // todo: add to process map
-    event->flags = args->arg[2];
-    long size = bpf_probe_read_str(event->args, MAX_ARGS, (void *)args->arg[3]);
-    if (size > 0)
-    {
-        ptr_end += size;
-    }
-    else
-    {
-        BPF_PRINTK("ERROR, tail_raw_syscall_clone_exit, read args failed.\n");
-    }
-     __u64 len = ptr_end - ptr_start;
-    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, event, sizeof(struct_clone_syscall));
     if (ret != 0)
     {
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);

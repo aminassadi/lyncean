@@ -56,8 +56,6 @@ typedef struct
 {
     unsigned long syscallid;
     int flags;
-    uint32_t size_args;
     unsigned long rc;
-    char args[MAX_ARGS];
 } __attribute__((aligned(8))) struct_clone_syscall;
 #endif
