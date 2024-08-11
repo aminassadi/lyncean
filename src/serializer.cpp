@@ -1,9 +1,10 @@
 #include "serializer.h"
 #include <sstream>
+#include <string.h>
 
 static constexpr size_t kMaximumOutputBufferSize{32};
 
-std::string escape_special_charachter(const std::string &input)
+std::string escape_special_character(const std::string &input)
 {
     std::string result;
     for (char c : input)
@@ -40,12 +41,12 @@ std::string realastic_impl::serialize_read_event(struct_read_syscall *event)
     std::string buff;
     if (event->rc < kMaximumOutputBufferSize)
     {
-        buff = std::move(escape_special_charachter(std::string(event->buff, event->buff + event->rc)));
+        buff = escape_special_character(std::string(event->buff, event->buff + event->rc));
         buff += "\"";
     }
     else
     {
-        buff = std::move(escape_special_charachter(std::string(event->buff, event->buff + kMaximumOutputBufferSize)));
+        buff = escape_special_character(std::string(event->buff, event->buff + kMaximumOutputBufferSize));
         buff += "\"...";
     }
     std::stringstream ss;
@@ -59,12 +60,12 @@ std::string realastic_impl::serialize_write_event(struct_write_syscall *event)
     std::string buff;
     if (event->rc < kMaximumOutputBufferSize)
     {
-        buff = std::move(escape_special_charachter(std::string(event->buff, event->buff + event->rc)));
+        buff = escape_special_character(std::string(event->buff, event->buff + event->rc));
         buff += "\"";
     }
     else
     {
-        buff = std::move(escape_special_charachter(std::string(event->buff, event->buff + kMaximumOutputBufferSize)));
+        buff = escape_special_character(std::string(event->buff, event->buff + kMaximumOutputBufferSize));
         buff += "\"...";
     }
     std::stringstream ss;
@@ -76,14 +77,39 @@ std::string realastic_impl::serialize_write_event(struct_write_syscall *event)
 std::string realastic_impl::serialize_open_event(struct_open_syscall *event)
 {
     std::string buff;
-    if (event->rc > 0)
+    if (strlen(event->pathname) < kMaximumOutputBufferSize)
     {
-        buff = std::move(escape_special_charachter(std::string(event->pathname)));
+        buff = escape_special_character(std::string(event->pathname));
         buff += "\"";
+    }
+    else
+    {
+        buff = escape_special_character(std::string(event->pathname, event->pathname + kMaximumOutputBufferSize));
+        buff += "\"...";
     }
 
     std::stringstream ss;
     ss << "open(" << event->rc << ", \"" << buff << ", ";
+    ss << ") = " << event->rc;
+    return ss.str();
+}
+
+std::string realastic_impl::serialize_creat_event(struct_creat_syscall *event)
+{
+    std::string buff;
+    if (strlen(event->pathname) < kMaximumOutputBufferSize)
+    {
+        buff = escape_special_character(std::string(event->pathname));
+        buff += "\"";
+    }
+    else
+    {
+        buff = escape_special_character(std::string(event->pathname, event->pathname + kMaximumOutputBufferSize));
+        buff += "\"...";
+    }
+
+    std::stringstream ss;
+    ss << "creat(" << event->rc << ", \"" << buff << ", ";
     ss << ") = " << event->rc;
     return ss.str();
 }

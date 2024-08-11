@@ -232,6 +232,52 @@ out:
     return 0;
 }
 
+SEC("lyncean/raw_syscalls/creat_exit")
+int tail_raw_syscall_creat_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_creat_syscall *creat_struct = NULL;
+    creat_struct = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!creat_struct)
+    {
+        BPF_PRINTK("ERROR, lookup from creat_struct_pool failed\n");
+        goto out;
+    }
+    void *ptr_start = (void *)creat_struct;
+    void *ptr_end = (void *)creat_struct->pathname;
+    creat_struct->syscallid = args->syscallid;
+    creat_struct->mode = args->arg[1];
+    if (bpf_probe_read(&creat_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+    long size = bpf_probe_read_str(creat_struct->pathname, MAX_PATH, (void *)args->arg[0]);
+    if (size > 0)
+    {
+        ptr_end += size;
+    }
+    else
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_open_exit, bpd_probe_creat failed.\n");
+    }
+    __u64 len = ptr_end - ptr_start;
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    return 0;
+}
+
 SEC("tracepoint/sched/sched_process_exit")
 int process_exit(void *ctx)
 {
