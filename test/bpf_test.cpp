@@ -18,7 +18,7 @@ event_struct global_event{};
 
 static void global_handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
 {
-    EXPECT_EQ(*reinterpret_cast<int *>(data), global_event.syscallid);
+    ASSERT_EQ(*reinterpret_cast<int *>(data), global_event.syscallid);
     switch (global_event.syscallid)
     {
     case SYS_read:
@@ -82,7 +82,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
-    }    
+    }
     default:
         break;
     }
@@ -91,10 +91,12 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
 class bpf_test_fixture : public ::testing::Test
 {
 public:
-    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = 
-    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat})
+    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls =
+                                        {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat},
+                                    bool follow_fork = true)
     {
         bpf_config_struct conf;
+        conf.follow_childs = follow_fork;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
         for (auto sys : syscalls)
         {
@@ -232,7 +234,7 @@ TEST_F(bpf_test_fixture, fork_systemcall)
     }
     else
     {
-        ASSERT_TRUE(pid>0);
+        ASSERT_TRUE(pid > 0);
         struct_fork_syscall event;
         memset(&event, 0, sizeof(struct_fork_syscall));
         event.rc = pid;
@@ -280,7 +282,7 @@ TEST_F(bpf_test_fixture, clone_syscall)
     ASSERT_TRUE(stack);
     // Create the child process
     pid = clone(child_func, stack + stack_size, flags, NULL);
-    ASSERT_FALSE(pid<0); 
+    ASSERT_FALSE(pid < 0);
     waitpid(pid, NULL, 0);
     free(stack);
     struct_clone_syscall event;
@@ -290,5 +292,65 @@ TEST_F(bpf_test_fixture, clone_syscall)
     global_event.syscallid = SYS_clone;
     memcpy(global_event.buff, (void *)&event, sizeof(struct_clone_syscall));
     int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+}
+
+void child_function_do_read()
+{
+    sleep(2);
+    const char *pathname = "./test_files/test_read.txt";
+    int fd = open(pathname, O_RDONLY);
+    if (fd < 0)
+        exit(-1);
+    std::string buff(40, 0);
+    int ret = read(fd, buff.data(), 40);
+    if (ret == -1)
+        exit(-1);
+    exit(fd);
+}
+
+TEST_F(bpf_test_fixture, following_child_1)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_fork, SYS_read}));
+    pid_t pid{0};
+    int flags = CLONE_NEWUTS;
+    void *stack{nullptr};
+    size_t stack_size = 1024 * 1024;
+    stack = malloc(stack_size);
+    ASSERT_TRUE(stack);
+    // Create the child process
+    pid = syscall(SYS_fork);
+    ASSERT_FALSE(pid < 0);
+    if (pid == 0) // child
+    {
+        child_function_do_read();
+    }
+    struct_fork_syscall event;
+    memset(&event, 0, sizeof(struct_fork_syscall));
+    event.rc = pid;
+    global_event.syscallid = SYS_fork;
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    ////////////////////////////////////
+    int status{};
+    int s;
+    std::cout<<"wait for child\n";
+    if ((s = waitpid(pid, &status, 0)) == -1)
+    {
+        perror("wait pid failed.");
+        FAIL();
+    }
+    struct_read_syscall event2{};
+    memset(&event2, 0, sizeof(struct_read_syscall));
+    event2.syscallid = SYS_read;
+    const char *buff{"this is test file and suppose to be read\0"};
+    event2.count = 40;
+    event2.fd = WEXITSTATUS(status);
+    event2.rc = 40;
+    memcpy(event2.buff, buff, 40);
+    memcpy(global_event.buff, (void *)&event2, sizeof(struct_read_syscall));
+    global_event.syscallid = SYS_read;
+    err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
 }

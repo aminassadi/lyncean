@@ -57,7 +57,7 @@ typedef struct
 typedef struct
 {
     unsigned long syscallid;
-    int flags;
+    unsigned long flags;
     unsigned long rc;
 } __attribute__((aligned(8))) struct_clone_syscall;
 #endif
