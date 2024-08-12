@@ -114,6 +114,20 @@ std::string realastic_impl::serialize_creat_event(struct_creat_syscall *event)
     return ss.str();
 }
 
+std::string realastic_impl::serialize_fork_event(struct_fork_syscall *event)
+{
+    std::stringstream ss;
+    ss << "fork() = " << event->rc;
+    return ss.str();
+}
+
+std::string realastic_impl::serialize_clone_event(struct_clone_syscall *event)
+{
+     std::stringstream ss;
+    ss << "clone(...," <<" flags=" << event->flags << ", ...) = " << event->rc;
+    return ss.str();
+}
+
 std::string realastic_impl::serialize_close_event(struct_close_syscall *event)
 {
     std::stringstream ss;

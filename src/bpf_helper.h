@@ -8,14 +8,15 @@
 #include <iostream>
 #include <syscall.h>
 
-static constexpr std::array<int, 7> kActiveSyscalls{
+static constexpr std::array<int, 8> kActiveSyscalls{
     SYS_read,
     SYS_write,
     SYS_open,
     SYS_openat,
     SYS_close,
     SYS_fork,
-    SYS_creat
+    SYS_creat,
+    SYS_clone,
 };
 
 static inline int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
