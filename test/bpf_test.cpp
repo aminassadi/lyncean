@@ -25,6 +25,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_read_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_read_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->pid, expected_event->pid);
         EXPECT_EQ(actual_event->count, expected_event->count);
         EXPECT_EQ(actual_event->fd, expected_event->fd);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
@@ -35,6 +36,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_write_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_write_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->pid, expected_event->pid);
         EXPECT_EQ(actual_event->count, expected_event->count);
         EXPECT_EQ(actual_event->fd, expected_event->fd);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
@@ -45,6 +47,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_open_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_open_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->pid, expected_event->pid);
         EXPECT_EQ(actual_event->flag, expected_event->flag);
         EXPECT_EQ(actual_event->mode, expected_event->mode);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
@@ -55,6 +58,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_close_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_close_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->pid, expected_event->pid);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(actual_event->fd, expected_event->fd);
         break;
@@ -63,6 +67,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_fork_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_fork_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->pid, expected_event->pid);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         break;
     }
@@ -70,6 +75,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_clone_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_clone_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->pid, expected_event->pid);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(actual_event->flags, expected_event->flags);
         break;
@@ -78,6 +84,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_creat_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_creat_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->pid, expected_event->pid);
         EXPECT_EQ(actual_event->mode, expected_event->mode);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
@@ -147,6 +154,7 @@ TEST_F(bpf_test_fixture, read_system_call)
     struct_read_syscall event{};
     memset(&event, 0, sizeof(struct_read_syscall));
     event.syscallid = SYS_read;
+    event.pid = getpid();
     event.count = ret;
     event.fd = fd;
     event.rc = ret;
@@ -169,6 +177,7 @@ TEST_F(bpf_test_fixture, open_system_call)
     struct_open_syscall event;
     memset(&event, 0, sizeof(struct_open_syscall));
     event.syscallid = SYS_open;
+    event.pid = getpid();
     event.flag = flags;
     event.rc = fd;
     event.mode = mode;
@@ -192,6 +201,7 @@ TEST_F(bpf_test_fixture, write_systemcall)
     struct_write_syscall event{};
     memset(&event, 0, sizeof(struct_write_syscall));
     event.syscallid = SYS_write;
+    event.pid = getpid();
     event.count = ret;
     event.fd = fd;
     event.rc = ret;
@@ -213,6 +223,7 @@ TEST_F(bpf_test_fixture, close_systemcall)
     struct_close_syscall event{};
     memset(&event, 0, sizeof(struct_close_syscall));
     event.syscallid = SYS_close;
+    event.pid = getpid();
     event.fd = fd;
     event.rc = rc;
     global_event.syscallid = SYS_close;
@@ -239,6 +250,7 @@ TEST_F(bpf_test_fixture, fork_systemcall)
         memset(&event, 0, sizeof(struct_fork_syscall));
         event.rc = pid;
         global_event.syscallid = SYS_fork;
+        event.pid = getpid();
         memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
         int err = perf_buffer__poll(_perf_buff, 100);
         EXPECT_FALSE(err == 0);
@@ -255,6 +267,7 @@ TEST_F(bpf_test_fixture, creat_system_call)
     struct_creat_syscall event;
     memset(&event, 0, sizeof(struct_creat_syscall));
     event.syscallid = SYS_creat;
+    event.pid = getpid();
     event.rc = fd;
     event.mode = mode;
     memcpy(event.pathname, pathname, strlen(pathname));
@@ -267,8 +280,7 @@ TEST_F(bpf_test_fixture, creat_system_call)
 
 static int child_func(void *arg)
 {
-    execl("/bin/ls", "ls", NULL);
-    return 0; /* Child terminates now */
+    return 0; 
 }
 
 TEST_F(bpf_test_fixture, clone_syscall)
@@ -288,6 +300,7 @@ TEST_F(bpf_test_fixture, clone_syscall)
     struct_clone_syscall event;
     memset(&event, 0, sizeof(struct_clone_syscall));
     event.rc = pid;
+    event.pid = getpid();
     event.flags = flags;
     global_event.syscallid = SYS_clone;
     memcpy(global_event.buff, (void *)&event, sizeof(struct_clone_syscall));
@@ -297,7 +310,7 @@ TEST_F(bpf_test_fixture, clone_syscall)
 
 void child_function_do_read()
 {
-    sleep(2);
+    sleep(1);
     const char *pathname = "./test_files/test_read.txt";
     int fd = open(pathname, O_RDONLY);
     if (fd < 0)
@@ -328,19 +341,14 @@ TEST_F(bpf_test_fixture, following_child_1)
     struct_fork_syscall event;
     memset(&event, 0, sizeof(struct_fork_syscall));
     event.rc = pid;
+    event.pid = getpid();
     global_event.syscallid = SYS_fork;
     memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
     ////////////////////////////////////
     int status{};
-    int s;
-    std::cout<<"wait for child\n";
-    if ((s = waitpid(pid, &status, 0)) == -1)
-    {
-        perror("wait pid failed.");
-        FAIL();
-    }
+    ASSERT_FALSE(waitpid(pid, &status, 0) == -1);    
     struct_read_syscall event2{};
     memset(&event2, 0, sizeof(struct_read_syscall));
     event2.syscallid = SYS_read;
@@ -348,6 +356,7 @@ TEST_F(bpf_test_fixture, following_child_1)
     event2.count = 40;
     event2.fd = WEXITSTATUS(status);
     event2.rc = 40;
+    event2.pid = pid;
     memcpy(event2.buff, buff, 40);
     memcpy(global_event.buff, (void *)&event2, sizeof(struct_read_syscall));
     global_event.syscallid = SYS_read;

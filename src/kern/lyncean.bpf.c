@@ -21,6 +21,7 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
     }
     void *ptr_start = (void *)event;
     void *ptr_end = (void *)event->buff;
+    event->pid = pidtid >> 32;
     event->fd = args->arg[0];
     event->syscallid = args->syscallid;
     event->count = args->arg[2];
@@ -70,6 +71,7 @@ int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx)
     }
     void *ptr_start = (void *)event;
     void *ptr_end = (void *)event->buff;
+    event->pid = pidtid >> 32;
     event->fd = args->arg[0];
     event->syscallid = args->syscallid;
     event->count = args->arg[2];
@@ -121,6 +123,7 @@ int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx)
     void *ptr_start = (void *)event;
     void *ptr_end = (void *)event->pathname;
     event->syscallid = args->syscallid;
+    event->pid = pidtid >> 32;
     event->flag = args->arg[1];
     event->mode = args->arg[2];
     if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
@@ -166,6 +169,7 @@ int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx)
         goto out;
     }
     event->syscallid = args->syscallid;
+    event->pid = pidtid >> 32;
     event->fd = args->arg[0];
     if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
@@ -204,6 +208,7 @@ int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
     event->syscallid = args->syscallid;
+    event->pid = pidtid >> 32;
     bpf_config_struct *config = NULL;
     int config_key = 0;
     config = bpf_map_lookup_elem(&config_map, &config_key);
@@ -255,6 +260,7 @@ int tail_raw_syscall_clone_exit(struct __raw_tracepoint_args *ctx)
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
     event->syscallid = args->syscallid;
+    event->pid = pidtid >> 32;
     event->flags = args->arg[0];
     event->syscallid = args->syscallid;
     bpf_config_struct *config = NULL;
@@ -306,6 +312,7 @@ int tail_raw_syscall_creat_exit(struct __raw_tracepoint_args *ctx)
     void *ptr_start = (void *)event;
     void *ptr_end = (void *)event->pathname;
     event->syscallid = args->syscallid;
+    event->pid = pidtid >> 32;
     event->mode = args->arg[1];
     if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {

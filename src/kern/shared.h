@@ -15,6 +15,7 @@ typedef struct
 typedef struct
 {
     unsigned long syscallid;
+    int pid;
     int fd;
     unsigned long count;
     unsigned long rc;
@@ -24,6 +25,7 @@ typedef struct
 typedef struct
 {
     unsigned long syscallid;
+    int pid;
     int flag; // except creat syscall where the flags equal to O_CREAT|O_WRONLY|O_TRUNC
     mode_t mode;
     int rc;
@@ -35,6 +37,7 @@ typedef struct_open_syscall struct_creat_syscall;
 typedef struct
 {
     unsigned long syscallid;
+    int pid;
     int fd;
     unsigned long count;
     unsigned long rc;
@@ -44,6 +47,7 @@ typedef struct
 typedef struct
 {
     unsigned long syscallid;
+    int pid;
     int fd;
     unsigned long rc;
 } __attribute__((aligned(8))) struct_close_syscall;
@@ -51,12 +55,14 @@ typedef struct
 typedef struct
 {
     unsigned long syscallid;
+    int pid;
     int rc;
 } __attribute__((aligned(8))) struct_fork_syscall;
 
 typedef struct
 {
     unsigned long syscallid;
+    int pid;
     unsigned long flags;
     unsigned long rc;
 } __attribute__((aligned(8))) struct_clone_syscall;
