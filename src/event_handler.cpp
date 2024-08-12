@@ -69,6 +69,17 @@ void event_handler::handle_event(void *ctx, int cpu, void *data, unsigned int da
         std::cout<<_serializer->serialize_creat_event(reinterpret_cast<struct_creat_syscall*>(data))<<std::endl;
         break;
     }
+    case SYS_fork:
+    {
+        std::cout<<_serializer->serialize_fork_event(reinterpret_cast<struct_fork_syscall*>(data))<<std::endl;
+        break;
+    }
+    case SYS_clone:
+    {
+        std::cout<<_serializer->serialize_clone_event(reinterpret_cast<struct_clone_syscall*>(data))<<std::endl;
+        break;
+    }
+
    
     default:
         break;
