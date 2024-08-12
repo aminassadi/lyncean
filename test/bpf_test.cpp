@@ -74,6 +74,15 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(actual_event->flags, expected_event->flags);
         break;
     }
+    case SYS_creat:
+    {
+        auto actual_event{reinterpret_cast<struct_creat_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_creat_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->mode, expected_event->mode);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
+        break;
+    }    
     default:
         break;
     }
@@ -82,7 +91,8 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
 class bpf_test_fixture : public ::testing::Test
 {
 public:
-    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork})
+    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = 
+    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat})
     {
         bpf_config_struct conf;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
@@ -231,6 +241,26 @@ TEST_F(bpf_test_fixture, fork_systemcall)
         int err = perf_buffer__poll(_perf_buff, 100);
         EXPECT_FALSE(err == 0);
     }
+}
+
+TEST_F(bpf_test_fixture, creat_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_creat}));
+    const char *pathname = "./test_files/creation.txt";
+    mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+    int fd = syscall(SYS_creat, pathname, mode);
+    ASSERT_FALSE(fd < 0);
+    struct_creat_syscall event;
+    memset(&event, 0, sizeof(struct_creat_syscall));
+    event.syscallid = SYS_creat;
+    event.rc = fd;
+    event.mode = mode;
+    memcpy(event.pathname, pathname, strlen(pathname));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_creat_syscall));
+    global_event.syscallid = SYS_creat;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 static int child_func(void *arg)
