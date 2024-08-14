@@ -46,41 +46,40 @@ void event_handler::handle_event(void *ctx, int cpu, void *data, unsigned int da
     {
     case SYS_read:
     {
-        std::cout<<_serializer->serialize_read_event(reinterpret_cast<struct_read_syscall*>(data))<<std::endl;
+        std::cout << _serializer->serialize_read_event(reinterpret_cast<struct_read_syscall *>(data)) << std::endl;
         break;
     }
     case SYS_write:
     {
-        std::cout<<_serializer->serialize_write_event(reinterpret_cast<struct_write_syscall*>(data))<<std::endl;
+        std::cout << _serializer->serialize_write_event(reinterpret_cast<struct_write_syscall *>(data)) << std::endl;
         break;
-    }    
+    }
     case SYS_open:
     {
-        std::cout<<_serializer->serialize_open_event(reinterpret_cast<struct_open_syscall*>(data))<<std::endl;
+        std::cout << _serializer->serialize_open_event(reinterpret_cast<struct_open_syscall *>(data)) << std::endl;
         break;
-    }      
+    }
     case SYS_close:
     {
-        std::cout<<_serializer->serialize_close_event(reinterpret_cast<struct_close_syscall*>(data))<<std::endl;
+        std::cout << _serializer->serialize_close_event(reinterpret_cast<struct_close_syscall *>(data)) << std::endl;
         break;
-    }      
+    }
     case SYS_creat:
     {
-        std::cout<<_serializer->serialize_creat_event(reinterpret_cast<struct_creat_syscall*>(data))<<std::endl;
+        std::cout << _serializer->serialize_creat_event(reinterpret_cast<struct_creat_syscall *>(data)) << std::endl;
         break;
     }
     case SYS_fork:
     {
-        std::cout<<_serializer->serialize_fork_event(reinterpret_cast<struct_fork_syscall*>(data))<<std::endl;
+        std::cout << _serializer->serialize_fork_event(reinterpret_cast<struct_fork_syscall *>(data)) << std::endl;
         break;
     }
     case SYS_clone:
     {
-        std::cout<<_serializer->serialize_clone_event(reinterpret_cast<struct_clone_syscall*>(data))<<std::endl;
+        std::cout << _serializer->serialize_clone_event(reinterpret_cast<struct_clone_syscall *>(data)) << std::endl;
         break;
     }
 
-   
     default:
         break;
     }
