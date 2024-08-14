@@ -3,7 +3,6 @@
 #include <memory>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <filesystem>
 #include <thread>
 
 using namespace std::literals;
@@ -74,6 +73,15 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
     }
+    case SYS_unlink:
+    {
+        auto actual_event{reinterpret_cast<struct_unlink_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_unlink_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->flag, expected_event->flag);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
+        break;
+    }
     default:
         break;
     }
@@ -83,7 +91,7 @@ class bpf_test_fixture : public ::testing::Test
 {
 public:
     bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = 
-    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat})
+    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat, SYS_unlink})
     {
         bpf_config_struct conf;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
@@ -164,6 +172,29 @@ TEST_F(bpf_test_fixture, open_system_call)
     memcpy(event.pathname, pathname, strlen(pathname));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_open_syscall));
     global_event.syscallid = SYS_open;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+}
+
+TEST_F(bpf_test_fixture, unlink_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_unlink}));
+    const char *pathname = "./test_files/test_unlink.txt";
+    mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+    int fd = syscall(SYS_creat, pathname, mode);
+    ASSERT_FALSE(fd < 0);
+    close(fd);
+
+    fd = syscall(SYS_unlink, pathname);
+    ASSERT_FALSE(fd < 0);
+    struct_unlink_syscall event;
+    memset(&event, 0, sizeof(struct_unlink_syscall));
+    event.syscallid = SYS_unlink;
+    event.rc = fd;
+    memcpy(event.pathname, pathname, strlen(pathname));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_unlink_syscall));
+    global_event.syscallid = SYS_unlink;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
     close(fd);
