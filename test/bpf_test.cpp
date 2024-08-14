@@ -74,6 +74,16 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
     }
+    case SYS_unlinkat:
+    {
+        auto actual_event{reinterpret_cast<struct_unlinkat_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_unlinkat_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->flag, expected_event->flag);
+        EXPECT_EQ(actual_event->dirfd, expected_event->dirfd);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
+        break;
+    }
     default:
         break;
     }
@@ -83,7 +93,7 @@ class bpf_test_fixture : public ::testing::Test
 {
 public:
     bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = 
-    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat})
+    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat, SYS_unlinkat})
     {
         bpf_config_struct conf;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
@@ -167,6 +177,40 @@ TEST_F(bpf_test_fixture, open_system_call)
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
     close(fd);
+}
+
+TEST_F(bpf_test_fixture, unlinkat_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_unlinkat}));
+    {
+        const char *pathname = "./test_files/test_unlink.txt";
+        mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+        int fd = syscall(SYS_creat, pathname, mode);
+        ASSERT_FALSE(fd < 0);
+        close(fd);
+    }
+
+    const char *dirpath = "./test_files/";
+    const char *filename = "test_unlink.txt";
+
+    int dirfd = syscall(SYS_open, dirpath, O_RDONLY | O_DIRECTORY);
+    ASSERT_FALSE(dirfd == -1); 
+
+    auto fd = syscall(SYS_unlinkat, dirfd, filename, 0);
+    ASSERT_FALSE(fd < 0);
+    struct_unlink_syscall event;
+    memset(&event, 0, sizeof(struct_unlink_syscall));
+    event.syscallid = SYS_unlinkat;
+    event.rc = fd;
+    event.dirfd = dirfd;
+    event.flag = 0;
+    memcpy(event.pathname, filename, strlen(filename));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_unlink_syscall));
+    global_event.syscallid = SYS_unlinkat;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+    close(dirfd);
 }
 
 TEST_F(bpf_test_fixture, write_systemcall)

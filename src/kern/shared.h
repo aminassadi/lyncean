@@ -53,5 +53,15 @@ typedef struct
     unsigned long rc;
 }__attribute__((aligned(8))) struct_fork_syscall;
 
+typedef struct
+{
+    unsigned long syscallid;
+    int rc;
+    int dirfd;
+    int flag;
+    char pathname[MAX_PATH];
+}__attribute__((aligned(8))) struct_unlink_syscall;
+
+typedef struct_unlink_syscall struct_unlinkat_syscall;
 
 #endif
