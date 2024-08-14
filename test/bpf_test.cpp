@@ -94,7 +94,7 @@ class bpf_test_fixture : public ::testing::Test
 {
 public:
     bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = 
-    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat})
+    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat, SYS_openat})
     {
         bpf_config_struct conf;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
