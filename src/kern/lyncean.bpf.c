@@ -313,7 +313,7 @@ int tail_raw_syscall_openat_exit(struct __raw_tracepoint_args *ctx)
     }
     else
     {
-        BPF_PRINTK("ERROR, tail_raw_syscall_openat_exit, bpd_probe_creat failed.\n");
+        BPF_PRINTK("ERROR, tail_raw_syscall_openat_exit, bpd_probe_openat failed.\n");
     }
     __u64 len = ptr_end - ptr_start;
     int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
