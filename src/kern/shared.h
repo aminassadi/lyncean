@@ -77,4 +77,16 @@ typedef struct
     unsigned long flags;
     unsigned long rc;
 } __attribute__((aligned(8))) struct_clone_syscall;
+
+typedef struct
+{
+    unsigned long syscallid;
+    int pid;
+    int rc;
+    int dirfd;
+    int flag;
+    char pathname[MAX_PATH];
+}__attribute__((aligned(8))) struct_unlink_syscall;
+
+
 #endif

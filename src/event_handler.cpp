@@ -58,6 +58,11 @@ void event_handler::handle_event(void *ctx, int cpu, void *data, unsigned int da
     {
         std::cout<<_serializer->serialize_openat_event(reinterpret_cast<struct_openat_syscall*>(data))<<std::endl;
         break;
+    }      
+    case SYS_unlink:
+    {
+        std::cout<<_serializer->serialize_unlink_event(reinterpret_cast<struct_unlink_syscall*>(data))<<std::endl;
+        break;
     }
     case SYS_open:
     {
