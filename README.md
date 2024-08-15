@@ -10,9 +10,8 @@ On Ubuntu, you may run make install or
 sudo apt-get install -y --no-install-recommends \
         libelf1 libelf-dev zlib1g-dev \
         make cmake clang llvm
-
-to install dependencies.
 ```
+to install dependencies.
 ## 2. Clone And Build
 clone:
 ```sh
@@ -34,7 +33,7 @@ sudo ./lyncean_test
 ```
 ### How To Use
 Lyncean allows tracing either by attaching to a specific process ID or executing a command directly. Moreover, it can trace child processes initiated by the traced process, especially when the -f or --follow-forks flag is utilized.
-![Alt Text](https://github.com/aminassadi/lyncean/blob/master/docs/run.jpg?raw=true)
+![Alt Text](/docs/run.png?raw=true)
 
 
 
