@@ -18,8 +18,9 @@ public:
     virtual std::string serialize_open_event(struct_open_syscall *event) = 0;
     virtual std::string serialize_close_event(struct_close_syscall *event) = 0;
     virtual std::string serialize_creat_event(struct_creat_syscall *event) = 0;
-    virtual std::string serialize_fork_event(struct_fork_syscall *event) = 0;
+     virtual std::string serialize_fork_event(struct_fork_syscall *event) = 0;
     virtual std::string serialize_clone_event(struct_clone_syscall *event) = 0;
+    virtual std::string serialize_openat_event(struct_openat_syscall *event) = 0;
 };
 
 class realastic_impl : public serializer
@@ -36,6 +37,7 @@ public:
     std::string serialize_creat_event(struct_creat_syscall *event) override;
     std::string serialize_fork_event(struct_fork_syscall *event) override;
     std::string serialize_clone_event(struct_clone_syscall *event) override;
+    std::string serialize_openat_event(struct_openat_syscall *event) override;
 };
 
 #endif

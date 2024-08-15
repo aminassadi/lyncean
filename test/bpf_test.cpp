@@ -90,6 +90,17 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
     }
+    case SYS_openat:
+    {
+        auto actual_event{reinterpret_cast<struct_openat_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_openat_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->mode, expected_event->mode);
+        EXPECT_EQ(actual_event->flag, expected_event->flag);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
+        EXPECT_EQ(actual_event->dirfd, expected_event->dirfd);
+        break;
+    }
     default:
         break;
     }
@@ -98,9 +109,8 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
 class bpf_test_fixture : public ::testing::Test
 {
 public:
-    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls =
-                                        {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat},
-                                    bool follow_fork = true)
+    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = 
+    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat, SYS_openat, SYS_clone, SYS_fork}, bool follow_fork=true)
     {
         bpf_config_struct conf;
         conf.follow_childs = follow_fork;
@@ -276,6 +286,33 @@ TEST_F(bpf_test_fixture, creat_system_call)
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
     close(fd);
+}
+
+TEST_F(bpf_test_fixture, openat_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_openat}));
+
+    int dirfd = syscall(SYS_open, "./test_files/", O_RDONLY | O_DIRECTORY);
+    ASSERT_FALSE(dirfd == -1);    
+    const char *pathname = "test_read.txt";
+    int flags = O_RDONLY;
+    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    int fd = syscall(SYS_openat, dirfd, pathname, flags, mode);
+    ASSERT_FALSE(fd < 0);
+
+    struct_openat_syscall event;
+    memset(&event, 0, sizeof(struct_openat_syscall));
+    event.syscallid = SYS_openat;
+    event.rc = fd;
+    event.mode = mode;
+    event.dirfd = dirfd;
+    memcpy(event.pathname, pathname, strlen(pathname));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_openat_syscall));
+    global_event.syscallid = SYS_openat;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+    close(dirfd);
 }
 
 static int child_func(void *arg)

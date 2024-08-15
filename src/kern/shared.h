@@ -32,6 +32,17 @@ typedef struct
     char pathname[MAX_PATH];
 } __attribute__((aligned(8))) struct_open_syscall;
 
+typedef struct 
+{
+    unsigned long syscallid;
+    int pid;
+    int dirfd;
+    int flag;
+    mode_t mode;
+    int rc;
+    char pathname[MAX_PATH];
+} __attribute__((aligned(8))) struct_openat_syscall;
+
 typedef struct_open_syscall struct_creat_syscall;
 
 typedef struct
