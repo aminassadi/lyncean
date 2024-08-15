@@ -2,6 +2,13 @@
 #define LYNCEAN_SERIALIZER_HEADER
 #include <string>
 #include "kern/shared.h"
+
+struct setting
+{
+    const int target_pid;
+    const bool follow_fokrs;
+};
+
 class serializer
 {
 public:
@@ -17,7 +24,11 @@ public:
 
 class realastic_impl : public serializer
 {
+private:
+    const setting _setting;
+
 public:
+    realastic_impl(setting stg) : _setting(stg) {};
     std::string serialize_read_event(struct_read_syscall *event) override;
     std::string serialize_write_event(struct_write_syscall *event) override;
     std::string serialize_open_event(struct_open_syscall *event) override;

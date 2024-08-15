@@ -2,12 +2,12 @@
 
 void main_operation::run_sync_task(std::optional<lynceanbpf_bpf *> &skel,
                             std::unique_ptr<event_handler> &bpf_event_handler,
-                            realastic_impl &serializer, int pid)
+                            serializer* serializer, const setting stg)
 {
     try
     {
-        main_operation::initialize(skel, pid);
-        bpf_event_handler = std::move(std::make_unique<event_handler>(skel.value(), &serializer));
+        main_operation::initialize(skel, stg);
+        bpf_event_handler = std::move(std::make_unique<event_handler>(skel.value(), serializer));
         bpf_event_handler->start();
         lynceanbpf_bpf::destroy(skel.value());
     }
@@ -20,14 +20,14 @@ void main_operation::run_sync_task(std::optional<lynceanbpf_bpf *> &skel,
 
 void main_operation::run_async_task(std::optional<lynceanbpf_bpf *> &skel,
                              std::unique_ptr<event_handler> &bpf_event_handler,
-                             realastic_impl &serializer, int pid)
+                             serializer* serializer, const setting stg)
 {
     std::future<void> future{};
 
     try
     {
-        main_operation::initialize(skel, pid);
-        bpf_event_handler = std::move(std::make_unique<event_handler>(skel.value(), &serializer));
+        main_operation::initialize(skel, stg);
+        bpf_event_handler = std::move(std::make_unique<event_handler>(skel.value(), serializer));
         future = std::async(std::launch::async, &event_handler::start, bpf_event_handler.get());
     }
     catch (const std::exception &err)
@@ -45,21 +45,21 @@ void main_operation::run_async_task(std::optional<lynceanbpf_bpf *> &skel,
 
     // Wait for the child to stop on exec
     int status{};
-    if (waitpid(pid, &status, 0) == -1)
+    if (waitpid(stg.target_pid, &status, 0) == -1)
     {
         perror("waitpid failed");
         std::exit(1);
     }
 
     // Resume the child process
-    if (ptrace(PTRACE_DETACH, pid, NULL, SIGCONT) == -1)
+    if (ptrace(PTRACE_DETACH, stg.target_pid, NULL, SIGCONT) == -1)
     {
         perror("ptrace DETACH failed");
         std::exit(1);
     }
 
     // Wait for the child process to complete
-    if (waitpid(pid, &status, 0) == -1)
+    if (waitpid(stg.target_pid, &status, 0) == -1)
     {
         perror("waitpid failed");
         std::exit(1);
@@ -110,7 +110,7 @@ void main_operation::child_operaion(std::string &command, std::vector<std::strin
     exit(1);
 }
 
-void main_operation::initialize(std::optional<lynceanbpf_bpf *> &skel, int pid)
+void main_operation::initialize(std::optional<lynceanbpf_bpf *> &skel, const setting stg)
 {
     skel = load_bpf_skeleton();
     if (!skel.has_value())
@@ -118,10 +118,11 @@ void main_operation::initialize(std::optional<lynceanbpf_bpf *> &skel, int pid)
         std::exit(1);
     }
     bpf_config_struct config{};
+    config.follow_childs = stg.follow_fokrs;
     memset(config.active, 0, SYSCALL_COUNT_SIZE);
     for (auto sys : kActiveSyscalls)
     {
         config.active[sys] = true;
     }
-    set_bpf_config(skel.value(), config, pid);
+    set_bpf_config(skel.value(), config, stg.target_pid);
 }

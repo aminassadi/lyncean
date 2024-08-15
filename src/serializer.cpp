@@ -50,6 +50,13 @@ std::string realastic_impl::serialize_read_event(struct_read_syscall *event)
         buff += "\"...";
     }
     std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
     ss << "read(" << event->fd << ", \"" << buff << ", " << event->count;
     ss << ") = " << event->rc;
     return ss.str();
@@ -69,6 +76,13 @@ std::string realastic_impl::serialize_write_event(struct_write_syscall *event)
         buff += "\"...";
     }
     std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
     ss << "write(" << event->fd << ", \"" << buff << ", " << event->count;
     ss << ") = " << event->rc;
     return ss.str();
@@ -89,6 +103,13 @@ std::string realastic_impl::serialize_open_event(struct_open_syscall *event)
     }
 
     std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
     ss << "open(" << event->rc << ", \"" << buff << ", ";
     ss << ") = " << event->rc;
     return ss.str();
@@ -109,6 +130,13 @@ std::string realastic_impl::serialize_creat_event(struct_creat_syscall *event)
     }
 
     std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
     ss << "creat(" << event->rc << ", \"" << buff << ", ";
     ss << ") = " << event->rc;
     return ss.str();
@@ -117,20 +145,41 @@ std::string realastic_impl::serialize_creat_event(struct_creat_syscall *event)
 std::string realastic_impl::serialize_fork_event(struct_fork_syscall *event)
 {
     std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
     ss << "fork() = " << event->rc;
     return ss.str();
 }
 
 std::string realastic_impl::serialize_clone_event(struct_clone_syscall *event)
 {
-     std::stringstream ss;
-    ss << "clone(...," <<" flags=" << event->flags << ", ...) = " << event->rc;
+    std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
+    ss << "clone(...," << " flags=" << event->flags << ", ...) = " << event->rc;
     return ss.str();
 }
 
 std::string realastic_impl::serialize_close_event(struct_close_syscall *event)
 {
     std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
     ss << "close(" << event->fd << ") = " << event->rc;
     return ss.str();
 }
