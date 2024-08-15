@@ -19,9 +19,9 @@ std::tuple<int, std::string, std::vector<std::string>, bool> InputParser::get_in
 
 void InputParser::register_pid(Parser &parser)
 {
-    parser.add_argument("--pid")
+    parser.add_argument("-p", "--pid")
         .default_value(0)
-        .help("whcih process id to watching.")
+        .help("trace process by pid.")
         .action([](const std::string &value)
                 {
             try 
@@ -47,15 +47,15 @@ void InputParser::register_pid(Parser &parser)
 
 void InputParser::register_command(Parser &parser)
 {
-    parser.add_argument("--command")
+    parser.add_argument("-c", "--command")
         .default_value(std::vector<std::string>({"empty"}))
-        .help("The command to execute")
+        .help("excecute and trace.")
         .remaining();
 }
 
 void InputParser::register_follow_fork_flag(Parser &parser)
 {
-    parser.add_argument("--follow-forks").help("follow child processes").flag();
+    parser.add_argument("-f", "--follow-forks").help("trace child process of traced process").flag();
 }
 
 void InputParser::apply_parser(Parser &parser, int argc, ARGV &argv)
