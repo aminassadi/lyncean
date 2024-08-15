@@ -1,6 +1,6 @@
 # Lyncean
 Lyncean is a userspace utility tailored for diagnostics, debugging, and providing instructions, accessible via a classic command-line interface on Linux platforms. Unlike traditional tools such as strace, Lyncean stands out by utilizing eBPF.
-Lyncean is currently under development; the list of available system calls can be found at "url://...". Additional system calls will be added soon, and contributions from the community are warmly welcomed.
+Lyncean is currently under development; the list of available system calls can be found at [here](/docs/available-syscalls.md). Additional system calls wiall be added soon, and contributions from the community are warmly welcomed.
 
 ### How To Build
 ## 1. Install Dependencies
