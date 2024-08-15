@@ -104,7 +104,6 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_unlink_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_unlink_syscall *>(global_event.buff)};
-        EXPECT_EQ(actual_event->flag, expected_event->flag);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
@@ -118,7 +117,7 @@ class bpf_test_fixture : public ::testing::Test
 {
 public:
     bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = 
-    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat}, bool follow_fork = true)
+    {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat, SYS_unlinkat, SYS_unlink, SYS_clone}, bool follow_fork = true)
     {
         bpf_config_struct conf;
         conf.follow_childs = follow_fork;
@@ -207,29 +206,6 @@ TEST_F(bpf_test_fixture, open_system_call)
     close(fd);
 }
 
-TEST_F(bpf_test_fixture, unlink_system_call)
-{
-    ASSERT_TRUE(set_active_syscalls_config({SYS_unlink}));
-    const char *pathname = "./test_files/test_unlink.txt";
-    mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
-    int rc = syscall(SYS_creat, pathname, mode);
-    ASSERT_FALSE(rc < 0);
-    close(rc);
-
-    rc = syscall(SYS_unlink, pathname);
-    ASSERT_FALSE(rc < 0);
-    struct_unlink_syscall event;
-    memset(&event, 0, sizeof(struct_unlink_syscall));
-    event.syscallid = SYS_unlink;
-    event.rc = rc;
-    memcpy(event.pathname, pathname, strlen(pathname));
-    memcpy(global_event.buff, (void *)&event, sizeof(struct_unlink_syscall));
-    global_event.syscallid = SYS_unlink;
-    int err = perf_buffer__poll(_perf_buff, 100);
-    EXPECT_FALSE(err == 0);
-    close(rc);
-}
-
 TEST_F(bpf_test_fixture, write_systemcall)
 {
     ASSERT_TRUE(set_active_syscalls_config({SYS_write}));
@@ -272,6 +248,65 @@ TEST_F(bpf_test_fixture, close_systemcall)
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
     close(fd);
+}
+
+
+TEST_F(bpf_test_fixture, unlink_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_unlink}));
+    const char *pathname = "./test_files/test_unlink.txt";
+    mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+    int rc = syscall(SYS_creat, pathname, mode);
+    ASSERT_FALSE(rc < 0);
+    close(rc);
+
+    rc = syscall(SYS_unlink, pathname);
+    ASSERT_FALSE(rc < 0);
+    struct_unlink_syscall event;
+    memset(&event, 0, sizeof(struct_unlink_syscall));
+    event.syscallid = SYS_unlink;
+    event.rc = rc;
+    memcpy(event.pathname, pathname, strlen(pathname));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_unlink_syscall));
+    global_event.syscallid = SYS_unlink;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(rc);
+}
+
+
+TEST_F(bpf_test_fixture, unlinkat_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_unlinkat}));
+    {
+        const char *pathname = "./test_files/test_unlink.txt";
+        mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+        int fd = syscall(SYS_creat, pathname, mode);
+        ASSERT_FALSE(fd < 0);
+        close(fd);
+    }
+
+    const char *dirpath = "./test_files/";
+    const char *filename = "test_unlink.txt";
+
+    int dirfd = syscall(SYS_open, dirpath, O_RDONLY | O_DIRECTORY);
+    ASSERT_FALSE(dirfd == -1); 
+
+    auto fd = syscall(SYS_unlinkat, dirfd, filename, 0);
+    ASSERT_FALSE(fd < 0);
+    struct_unlinkat_syscall event;
+    memset(&event, 0, sizeof(struct_unlink_syscall));
+    event.syscallid = SYS_unlinkat;
+    event.rc = fd;
+    event.dirfd = dirfd;
+    event.flag = 0;
+    memcpy(event.pathname, filename, strlen(filename));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_unlink_syscall));
+    global_event.syscallid = SYS_unlinkat;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+    close(dirfd);
 }
 
 TEST_F(bpf_test_fixture, fork_systemcall)

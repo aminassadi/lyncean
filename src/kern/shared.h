@@ -83,10 +83,18 @@ typedef struct
     unsigned long syscallid;
     int pid;
     int rc;
+    char pathname[MAX_PATH];
+}__attribute__((aligned(8))) struct_unlink_syscall;
+
+typedef struct
+{
+    unsigned long syscallid;
+    int pid;
+    int rc;
     int dirfd;
     int flag;
     char pathname[MAX_PATH];
-}__attribute__((aligned(8))) struct_unlink_syscall;
+}__attribute__((aligned(8))) struct_unlinkat_syscall;
 
 
 #endif

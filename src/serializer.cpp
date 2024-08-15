@@ -90,18 +90,6 @@ std::string realastic_impl::serialize_write_event(struct_write_syscall *event)
 
 std::string realastic_impl::serialize_open_event(struct_open_syscall *event)
 {
-    std::string buff;
-    if (strlen(event->pathname) < kMaximumOutputBufferSize)
-    {
-        buff = escape_special_character(std::string(event->pathname));
-        buff += "\"";
-    }
-    else
-    {
-        buff = escape_special_character(std::string(event->pathname, event->pathname + kMaximumOutputBufferSize));
-        buff += "\"...";
-    }
-
     std::stringstream ss;
     if (_setting.follow_fokrs)
     {
@@ -110,7 +98,7 @@ std::string realastic_impl::serialize_open_event(struct_open_syscall *event)
             ss << "[pid=" << event->pid << "] ";
         }
     }
-    ss << "open(" << event->rc << ", \"" << buff << ", ";
+    ss << "open(" << event->rc << ", \"" << event->pathname << ", ";
     ss << ") = " << event->rc;
     return ss.str();
 }
@@ -130,21 +118,6 @@ std::string realastic_impl::serialize_creat_event(struct_creat_syscall *event)
     return ss.str();
 }
 
-std::string realastic_impl::serialize_unlink_event(struct_unlink_syscall *event)
-{
-    std::stringstream ss;
-    if (_setting.follow_fokrs)
-    {
-        if (event->pid != _setting.target_pid)
-        {
-            ss << "[pid=" << event->pid << "] ";
-        }
-    }
-    ss << "unlink(" << event->pathname << ") = ";
-    ss <<  event->rc;
-    return ss.str();
-}
-
 std::string realastic_impl::serialize_close_event(struct_close_syscall *event)
 {
     std::stringstream ss;
@@ -158,6 +131,23 @@ std::string realastic_impl::serialize_close_event(struct_close_syscall *event)
     ss << "close(" << event->fd << ") = " << event->rc;
     return ss.str();
 }
+
+
+std::string realastic_impl::serialize_unlinkat_event(struct_unlinkat_syscall *event)
+{
+    std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
+    ss << "unlinkat(" << event->dirfd << ", " << event->pathname << ", ";
+    ss << event->flag << ") = " << event->rc;
+    return ss.str();
+}
+
 
 std::string realastic_impl::serialize_openat_event(struct_openat_syscall *event)
 {
@@ -173,6 +163,23 @@ std::string realastic_impl::serialize_openat_event(struct_openat_syscall *event)
     ss << event->flag << ", " << event->mode << ") = " << event->rc;
     return ss.str();
 }
+
+
+std::string realastic_impl::serialize_unlink_event(struct_unlink_syscall *event)
+{
+    std::stringstream ss;
+    if (_setting.follow_fokrs)
+    {
+        if (event->pid != _setting.target_pid)
+        {
+            ss << "[pid=" << event->pid << "] ";
+        }
+    }
+    ss << "unlink(" << event->pathname << ") = ";
+    ss <<  event->rc;
+    return ss.str();
+}
+
 
 std::string realastic_impl::serialize_fork_event(struct_fork_syscall *event)
 {
