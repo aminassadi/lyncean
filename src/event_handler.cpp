@@ -68,6 +68,11 @@ void event_handler::handle_event(void *ctx, int cpu, void *data, unsigned int da
     {
         std::cout<<_serializer->serialize_creat_event(reinterpret_cast<struct_creat_syscall*>(data))<<std::endl;
         break;
+    }      
+    case SYS_openat:
+    {
+        std::cout<<_serializer->serialize_openat_event(reinterpret_cast<struct_openat_syscall*>(data))<<std::endl;
+        break;
     }
    
     default:

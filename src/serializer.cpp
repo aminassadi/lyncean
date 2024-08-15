@@ -114,6 +114,26 @@ std::string realastic_impl::serialize_creat_event(struct_creat_syscall *event)
     return ss.str();
 }
 
+std::string realastic_impl::serialize_openat_event(struct_openat_syscall *event)
+{
+    std::string buff;
+    if (strlen(event->pathname) < kMaximumOutputBufferSize)
+    {
+        buff = escape_special_character(std::string(event->pathname));
+        buff += "\"";
+    }
+    else
+    {
+        buff = escape_special_character(std::string(event->pathname, event->pathname + kMaximumOutputBufferSize));
+        buff += "\"...";
+    }
+
+    std::stringstream ss;
+    ss << "openat(" << event->rc << ", \"" << buff << ", ";
+    ss << ") = " << event->rc;
+    return ss.str();
+}
+
 std::string realastic_impl::serialize_close_event(struct_close_syscall *event)
 {
     std::stringstream ss;
