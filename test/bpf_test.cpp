@@ -3,11 +3,10 @@
 #include <memory>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <filesystem>
 #include <thread>
 
 using namespace std::literals;
-static constexpr size_t kMaximumEventSize{65532};
+static constexpr size_t kMaximumEventSize{65536 - 24};
 struct event_struct
 {
     char buff[kMaximumEventSize];
@@ -18,13 +17,14 @@ event_struct global_event{};
 
 static void global_handle_event(void *ctx, int cpu, void *data, unsigned int data_sz)
 {
-    EXPECT_EQ(*reinterpret_cast<int *>(data), global_event.syscallid);
+    ASSERT_EQ(*reinterpret_cast<int *>(data), global_event.syscallid);
     switch (global_event.syscallid)
     {
     case SYS_read:
     {
         auto actual_event{reinterpret_cast<struct_read_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_read_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
         EXPECT_EQ(actual_event->count, expected_event->count);
         EXPECT_EQ(actual_event->fd, expected_event->fd);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
@@ -35,6 +35,7 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_write_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_write_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
         EXPECT_EQ(actual_event->count, expected_event->count);
         EXPECT_EQ(actual_event->fd, expected_event->fd);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
@@ -45,8 +46,66 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
     {
         auto actual_event{reinterpret_cast<struct_open_syscall *>(data)};
         auto expected_event{reinterpret_cast<struct_open_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
         EXPECT_EQ(actual_event->flag, expected_event->flag);
         EXPECT_EQ(actual_event->mode, expected_event->mode);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
+        break;
+    }
+    case SYS_close:
+    {
+        auto actual_event{reinterpret_cast<struct_close_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_close_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(actual_event->fd, expected_event->fd);
+        break;
+    }
+    case SYS_fork:
+    {
+        auto actual_event{reinterpret_cast<struct_fork_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_fork_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        break;
+    }
+    case SYS_clone:
+    {
+        auto actual_event{reinterpret_cast<struct_clone_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_clone_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(actual_event->flags, expected_event->flags);
+        break;
+    }
+    case SYS_creat:
+    {
+        auto actual_event{reinterpret_cast<struct_creat_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_creat_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
+        EXPECT_EQ(actual_event->mode, expected_event->mode);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
+        break;
+    }
+    case SYS_openat:
+    {
+        auto actual_event{reinterpret_cast<struct_openat_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_openat_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
+        EXPECT_EQ(actual_event->mode, expected_event->mode);
+        EXPECT_EQ(actual_event->flag, expected_event->flag);
+        EXPECT_EQ(actual_event->rc, expected_event->rc);
+        EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
+        EXPECT_EQ(actual_event->dirfd, expected_event->dirfd);
+        break;
+    }
+    case SYS_unlink:
+    {
+        auto actual_event{reinterpret_cast<struct_unlink_syscall *>(data)};
+        auto expected_event{reinterpret_cast<struct_unlink_syscall *>(global_event.buff)};
+        EXPECT_EQ(actual_event->header.pid, expected_event->header.pid);
         EXPECT_EQ(actual_event->rc, expected_event->rc);
         EXPECT_EQ(memcmp(actual_event->pathname, expected_event->pathname, strlen(expected_event->pathname)), 0);
         break;
@@ -59,16 +118,18 @@ static void global_handle_event(void *ctx, int cpu, void *data, unsigned int dat
 class bpf_test_fixture : public ::testing::Test
 {
 public:
-    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls = {SYS_open, SYS_read, SYS_write, SYS_openat})
+    bool set_active_syscalls_config(const std::initializer_list<int> &syscalls =
+                                        {SYS_open, SYS_read, SYS_write, SYS_openat, SYS_fork, SYS_creat, SYS_unlinkat, SYS_unlink, SYS_clone},
+                                    bool follow_fork = true)
     {
         bpf_config_struct conf;
+        conf.follow_childs = follow_fork;
         memset(conf.active, 0, SYSCALL_COUNT_SIZE);
-        conf.target_pid = getpid();
         for (auto sys : syscalls)
         {
             conf.active[sys] = true;
         }
-        return set_bpf_config(_skel, conf);
+        return set_bpf_config(_skel, conf, getpid());
     }
 
 private:
@@ -91,6 +152,7 @@ protected:
 
     void SetUp() override
     {
+        memset(&global_event, 0, sizeof(event_struct));
     }
 
     void TearDown() override
@@ -101,7 +163,7 @@ protected:
 
 TEST_F(bpf_test_fixture, read_system_call)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_read}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_read}));
     const char *pathname = "./test_files/test_read.txt";
     int fd = open(pathname, O_RDONLY);
     ASSERT_FALSE(fd < 0);
@@ -111,21 +173,22 @@ TEST_F(bpf_test_fixture, read_system_call)
     ASSERT_TRUE((buff == std::string("this is test file and suppose to be read")));
     struct_read_syscall event{};
     memset(&event, 0, sizeof(struct_read_syscall));
-    event.syscallid = SYS_read;
+    event.header.syscallid = SYS_read;
+    event.header.pid = getpid();
     event.count = ret;
     event.fd = fd;
     event.rc = ret;
     memcpy(event.buff, buff.data(), ret);
-    memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_read_syscall));
     global_event.syscallid = SYS_read;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 TEST_F(bpf_test_fixture, open_system_call)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_open}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_open}));
     const char *pathname = "./test_files/test_read.txt";
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     int flags = O_RDONLY;
@@ -133,21 +196,22 @@ TEST_F(bpf_test_fixture, open_system_call)
     ASSERT_FALSE(fd < 0);
     struct_open_syscall event;
     memset(&event, 0, sizeof(struct_open_syscall));
-    event.syscallid = SYS_open;
+    event.header.syscallid = SYS_open;
+    event.header.pid = getpid();
     event.flag = flags;
     event.rc = fd;
     event.mode = mode;
     memcpy(event.pathname, pathname, strlen(pathname));
-    memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_open_syscall));
     global_event.syscallid = SYS_open;
     int err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
+    close(fd);
 }
 
 TEST_F(bpf_test_fixture, write_systemcall)
 {
-    EXPECT_TRUE(set_active_syscalls_config({SYS_write}));
+    ASSERT_TRUE(set_active_syscalls_config({SYS_write}));
     const char *pathname = "./test_files/write_test.txt";
     int fd = open(pathname, O_WRONLY | O_TRUNC);
     ASSERT_FALSE(fd < 0);
@@ -156,14 +220,253 @@ TEST_F(bpf_test_fixture, write_systemcall)
     ASSERT_TRUE(ret == buff.length());
     struct_write_syscall event{};
     memset(&event, 0, sizeof(struct_write_syscall));
-    event.syscallid = SYS_write;
+    event.header.syscallid = SYS_write;
+    event.header.pid = getpid();
     event.count = ret;
     event.fd = fd;
     event.rc = ret;
     memcpy(event.buff, buff.data(), ret);
-    memset(&global_event, 0, sizeof(event_struct));
     memcpy(global_event.buff, (void *)&event, sizeof(struct_write_syscall));
     global_event.syscallid = SYS_write;
     int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+}
+
+TEST_F(bpf_test_fixture, close_systemcall)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_close}));
+    const char *pathname = "./test_files/write_test.txt";
+    int fd = open(pathname, O_WRONLY | O_TRUNC);
+    ASSERT_FALSE(fd < 0);
+    int rc = syscall(SYS_close, fd);
+    struct_close_syscall event{};
+    memset(&event, 0, sizeof(struct_close_syscall));
+    event.header.syscallid = SYS_close;
+    event.header.pid = getpid();
+    event.fd = fd;
+    event.rc = rc;
+    global_event.syscallid = SYS_close;
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+}
+
+TEST_F(bpf_test_fixture, unlink_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_unlink}));
+    const char *pathname = "./test_files/test_unlink.txt";
+    mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+    int rc = syscall(SYS_creat, pathname, mode);
+    ASSERT_FALSE(rc < 0);
+    close(rc);
+
+    rc = syscall(SYS_unlink, pathname);
+    ASSERT_FALSE(rc < 0);
+    struct_unlink_syscall event;
+    memset(&event, 0, sizeof(struct_unlink_syscall));
+    event.header.syscallid = SYS_unlink;
+    event.header.pid = getpid();
+    event.rc = rc;
+    memcpy(event.pathname, pathname, strlen(pathname));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_unlink_syscall));
+    global_event.syscallid = SYS_unlink;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(rc);
+}
+
+TEST_F(bpf_test_fixture, unlinkat_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_unlinkat}));
+    {
+        const char *pathname = "./test_files/test_unlink.txt";
+        mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+        int fd = syscall(SYS_creat, pathname, mode);
+        ASSERT_FALSE(fd < 0);
+        close(fd);
+    }
+
+    const char *dirpath = "./test_files/";
+    const char *filename = "test_unlink.txt";
+
+    int dirfd = syscall(SYS_open, dirpath, O_RDONLY | O_DIRECTORY);
+    ASSERT_FALSE(dirfd == -1);
+
+    auto fd = syscall(SYS_unlinkat, dirfd, filename, 0);
+    ASSERT_FALSE(fd < 0);
+    struct_unlinkat_syscall event;
+    memset(&event, 0, sizeof(struct_unlink_syscall));
+    event.header.syscallid = SYS_unlinkat;
+    event.header.pid = getpid();
+    event.rc = fd;
+    event.dirfd = dirfd;
+    event.flag = 0;
+    memcpy(event.pathname, filename, strlen(filename));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_unlink_syscall));
+    global_event.syscallid = SYS_unlinkat;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+    close(dirfd);
+}
+
+TEST_F(bpf_test_fixture, fork_systemcall)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_fork}));
+    pid_t pid = 0;
+    pid = syscall(SYS_fork);
+    ASSERT_FALSE(pid < 0);
+    if (pid == 0) // child process
+    {
+        exit(0);
+    }
+    else
+    {
+        ASSERT_TRUE(pid > 0);
+        struct_fork_syscall event;
+        memset(&event, 0, sizeof(struct_fork_syscall));
+        event.rc = pid;
+        global_event.syscallid = SYS_fork;
+        event.header.pid = getpid();
+        memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+        int err = perf_buffer__poll(_perf_buff, 100);
+        EXPECT_FALSE(err == 0);
+    }
+}
+
+TEST_F(bpf_test_fixture, creat_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_creat}));
+    const char *pathname = "./test_files/creation.txt";
+    mode_t mode = O_CREAT | O_WRONLY | O_TRUNC;
+    int fd = syscall(SYS_creat, pathname, mode);
+    ASSERT_FALSE(fd < 0);
+    struct_creat_syscall event;
+    memset(&event, 0, sizeof(struct_creat_syscall));
+    event.header.syscallid = SYS_creat;
+    event.header.pid = getpid();
+    event.rc = fd;
+    event.mode = mode;
+    memcpy(event.pathname, pathname, strlen(pathname));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_creat_syscall));
+    global_event.syscallid = SYS_creat;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+}
+
+TEST_F(bpf_test_fixture, openat_system_call)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_openat}));
+
+    int dirfd = syscall(SYS_open, "./test_files/", O_RDONLY | O_DIRECTORY);
+    ASSERT_FALSE(dirfd == -1);
+    const char *pathname = "test_read.txt";
+    int flags = O_RDONLY;
+    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    int fd = syscall(SYS_openat, dirfd, pathname, flags, mode);
+    ASSERT_FALSE(fd < 0);
+
+    struct_openat_syscall event;
+    memset(&event, 0, sizeof(struct_openat_syscall));
+    event.header.syscallid = SYS_openat;
+    event.header.pid = getpid();
+    event.rc = fd;
+    event.mode = mode;
+    event.dirfd = dirfd;
+    memcpy(event.pathname, pathname, strlen(pathname));
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_openat_syscall));
+    global_event.syscallid = SYS_openat;
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    close(fd);
+    close(dirfd);
+}
+
+static int child_func(void *arg)
+{
+    return 0;
+}
+
+TEST_F(bpf_test_fixture, clone_syscall)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_clone}));
+    pid_t pid{0};
+    int flags = CLONE_NEWNS | CLONE_NEWPID;
+    void *stack{nullptr};
+    size_t stack_size = 1024 * 1024;
+    stack = malloc(stack_size);
+    ASSERT_TRUE(stack);
+    // Create the child process
+    pid = clone(child_func, stack + stack_size, flags, NULL);
+    ASSERT_FALSE(pid < 0);
+    waitpid(pid, NULL, 0);
+    free(stack);
+    struct_clone_syscall event;
+    memset(&event, 0, sizeof(struct_clone_syscall));
+    event.rc = pid;
+    event.header.pid = getpid();
+    event.flags = flags;
+    global_event.syscallid = SYS_clone;
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_clone_syscall));
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+}
+
+void child_function_do_read()
+{
+    sleep(1);
+    const char *pathname = "./test_files/test_read.txt";
+    int fd = open(pathname, O_RDONLY);
+    if (fd < 0)
+        exit(-1);
+    std::string buff(40, 0);
+    int ret = read(fd, buff.data(), 40);
+    if (ret == -1)
+        exit(-1);
+    exit(fd);
+}
+
+TEST_F(bpf_test_fixture, following_child_1)
+{
+    ASSERT_TRUE(set_active_syscalls_config({SYS_fork, SYS_read}));
+    pid_t pid{0};
+    int flags = CLONE_NEWUTS;
+    void *stack{nullptr};
+    size_t stack_size = 1024 * 1024;
+    stack = malloc(stack_size);
+    ASSERT_TRUE(stack);
+    // Create the child process
+    pid = syscall(SYS_fork);
+    ASSERT_FALSE(pid < 0);
+    if (pid == 0) // child
+    {
+        child_function_do_read();
+    }
+    struct_fork_syscall event;
+    memset(&event, 0, sizeof(struct_fork_syscall));
+    event.rc = pid;
+    event.header.pid = getpid();
+    global_event.syscallid = SYS_fork;
+    memcpy(global_event.buff, (void *)&event, sizeof(struct_close_syscall));
+    int err = perf_buffer__poll(_perf_buff, 100);
+    EXPECT_FALSE(err == 0);
+    ////////////////////////////////////
+    int status{};
+    ASSERT_FALSE(waitpid(pid, &status, 0) == -1);
+    struct_read_syscall event2{};
+    memset(&event2, 0, sizeof(struct_read_syscall));
+    event2.header.syscallid = SYS_read;
+    const char *buff{"this is test file and suppose to be read\0"};
+    event2.count = 40;
+    event2.fd = WEXITSTATUS(status);
+    event2.rc = 40;
+    event2.header.pid = pid;
+    memcpy(event2.buff, buff, 40);
+    memcpy(global_event.buff, (void *)&event2, sizeof(struct_read_syscall));
+    global_event.syscallid = SYS_read;
+    err = perf_buffer__poll(_perf_buff, 100);
     EXPECT_FALSE(err == 0);
 }

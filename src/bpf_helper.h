@@ -5,12 +5,20 @@
 #include "bpf/bpf.h"
 #include <optional>
 #include <array>
+#include <iostream>
+#include <syscall.h>
 
-static constexpr std::array<int, 4> kActiveSyscalls{
+static constexpr std::array<int, 10> kActiveSyscalls{
     SYS_read,
     SYS_write,
     SYS_open,
     SYS_openat,
+    SYS_close,
+    SYS_fork,
+    SYS_creat,
+    SYS_unlink,
+    SYS_unlinkat,
+    SYS_clone
 };
 
 static inline int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
@@ -34,6 +42,13 @@ static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
         int ret = bpf_program__set_type(skel->progs.tail_raw_syscall_read_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_write_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_open_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_close_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_fork_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_creat_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_clone_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_unlink_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_openat_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_unlinkat_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_object__load(skel->obj);
         if (ret)
         {
@@ -41,7 +56,7 @@ static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
             break;
         }
         bpf_config_struct config{};
-        config.target_pid = 0;
+        config.follow_childs = false;
         memset(config.active, 0, SYSCALL_COUNT_SIZE);
         auto config_fd{bpf_map__fd(skel->maps.config_map)};
         if (config_fd == -1)
@@ -53,26 +68,18 @@ static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
         {
             break;
         }
-        auto raw_sys_enter_link = bpf_program__attach_raw_tracepoint(skel->progs.generic_raw_sys_enter, "sys_enter");
-        if (libbpf_get_error(raw_sys_enter_link))
+        if (skel->attach(skel))
         {
-            std::cerr << "Attaching raw_tracepoint/sys_enter failed with error\n";
-            break;
-        }
-        auto raw_sys_exit_link = bpf_program__attach_raw_tracepoint(skel->progs.generic_raw_sys_exit, "sys_exit");
-        if (libbpf_get_error(raw_sys_exit_link))
-        {
-            std::cerr << "Attaching raw_tracepoint/sys_exit failed with error\n";
+            std::cerr << "attach bpf skeleton failed\n";
             break;
         }
         return skel;
-
     } while (false);
     skel->destroy(skel);
     return std::nullopt;
 }
 
-static inline bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf)
+static inline bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_struct &conf, uint32_t target_pid)
 {
     auto config_fd{bpf_map__fd(skel->maps.config_map)};
     if (config_fd == -1)
@@ -81,6 +88,16 @@ static inline bool set_bpf_config(const lynceanbpf_bpf *skel, const bpf_config_s
     }
     int key = 0;
     if (bpf_map_update_elem(config_fd, &key, &conf, BPF_ANY))
+    {
+        return false;
+    }
+    auto process_fd{bpf_map__fd(skel->maps.target_tasks_map)};
+    if (process_fd == -1)
+    {
+        return false;
+    }
+    bool value = true;
+    if (bpf_map_update_elem(process_fd, &target_pid, &value, BPF_ANY))
     {
         return false;
     }

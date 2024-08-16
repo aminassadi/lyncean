@@ -10,6 +10,7 @@
 #include "asm/unistd_64.h"
 #define MAX_CPU 512
 #define MAX_RUNNING_THREADS 4096
+#define MAX_SUBPROCESS 512
 #define NUM_OF_SYSCALLS 512
 #define MAX_EVENT_SIZE (65536 - 24)
 
@@ -26,9 +27,22 @@ typedef struct
     unsigned long returncode;
 } syscall_args;
 
+#ifndef CLONE_VM
+#define CLONE_VM 0x00000100
+#endif
+#ifndef CLONE_THREAD
+#define CLONE_THREAD 0x00010000 /* Set to add to same thread group.  */
+#endif
 int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx);
 int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_clone_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_creat_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_openat_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_unlink_exit(struct __raw_tracepoint_args *ctx);
+int tail_raw_syscall_unlinkat_exit(struct __raw_tracepoint_args *ctx);
 
 struct
 {
@@ -45,6 +59,14 @@ struct
     __type(key, uint64_t);
     __type(value, syscall_args);
 } syscall_args_map SEC(".maps");
+
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_SUBPROCESS);
+    __type(key, uint32_t);
+    __type(value, bool);
+} target_tasks_map SEC(".maps");
 
 struct
 {
@@ -82,6 +104,13 @@ struct
         [__NR_read] = (void *)&tail_raw_syscall_read_exit,
         [__NR_write] = (void *)&tail_raw_syscall_write_exit,
         [__NR_open] = (void *)&tail_raw_syscall_open_exit,
+        [__NR_close] = (void *)&tail_raw_syscall_close_exit,
+        [__NR_creat] = (void *)&tail_raw_syscall_creat_exit,
+        [__NR_fork] = (void *)&tail_raw_syscall_fork_exit,
+        [__NR_clone] = (void *)&tail_raw_syscall_clone_exit,
+        [__NR_openat] = (void *)&tail_raw_syscall_openat_exit,
+        [__NR_unlink] = (void *)&tail_raw_syscall_unlink_exit,
+        [__NR_unlinkat] = (void *)&tail_raw_syscall_unlinkat_exit,
     },
 };
 

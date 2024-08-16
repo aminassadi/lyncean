@@ -1,3 +1,4 @@
 .direnv
 /build
 .vscode
+test/test_files/test
