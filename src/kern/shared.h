@@ -16,6 +16,11 @@ typedef struct
 {
     unsigned long syscallid;
     int pid;
+} __attribute__((aligned(8))) event_header;
+
+typedef struct
+{
+    event_header header;
     int fd;
     unsigned long count;
     unsigned long rc;
@@ -24,18 +29,16 @@ typedef struct
 
 typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     int flag; // except creat syscall where the flags equal to O_CREAT|O_WRONLY|O_TRUNC
     mode_t mode;
     int rc;
     char pathname[MAX_PATH];
 } __attribute__((aligned(8))) struct_open_syscall;
 
-typedef struct 
+typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     int dirfd;
     int flag;
     mode_t mode;
@@ -47,8 +50,7 @@ typedef struct_open_syscall struct_creat_syscall;
 
 typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     int fd;
     unsigned long count;
     unsigned long rc;
@@ -57,44 +59,38 @@ typedef struct
 
 typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     int fd;
     unsigned long rc;
 } __attribute__((aligned(8))) struct_close_syscall;
 
 typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     int rc;
 } __attribute__((aligned(8))) struct_fork_syscall;
 
 typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     unsigned long flags;
     unsigned long rc;
 } __attribute__((aligned(8))) struct_clone_syscall;
 
 typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     int rc;
     char pathname[MAX_PATH];
-}__attribute__((aligned(8))) struct_unlink_syscall;
+} __attribute__((aligned(8))) struct_unlink_syscall;
 
 typedef struct
 {
-    unsigned long syscallid;
-    int pid;
+    event_header header;
     int rc;
     int dirfd;
     int flag;
     char pathname[MAX_PATH];
-}__attribute__((aligned(8))) struct_unlinkat_syscall;
-
+} __attribute__((aligned(8))) struct_unlinkat_syscall;
 
 #endif

@@ -29,7 +29,7 @@ class realastic_impl : public serializer
 {
 private:
     const setting _setting;
-
+    std::stringstream get_header_stream(pid_t pid);
 public:
     realastic_impl(setting stg) : _setting(stg) {};
     std::string serialize_read_event(struct_read_syscall *event) override;
