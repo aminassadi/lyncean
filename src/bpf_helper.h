@@ -8,7 +8,7 @@
 #include <iostream>
 #include <syscall.h>
 
-static constexpr std::array<int, 8> kActiveSyscalls{
+static constexpr std::array<int, 10> kActiveSyscalls{
     SYS_read,
     SYS_write,
     SYS_open,
@@ -16,7 +16,9 @@ static constexpr std::array<int, 8> kActiveSyscalls{
     SYS_close,
     SYS_fork,
     SYS_creat,
-    SYS_openat
+    SYS_unlink,
+    SYS_unlinkat,
+    SYS_clone
 };
 
 static inline int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
@@ -43,7 +45,10 @@ static inline std::optional<lynceanbpf_bpf *> load_bpf_skeleton()
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_close_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_fork_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_creat_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_clone_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_unlink_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_openat_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
+        ret = ret ?: bpf_program__set_type(skel->progs.tail_raw_syscall_unlinkat_exit, BPF_PROG_TYPE_RAW_TRACEPOINT);
         ret = ret ?: bpf_object__load(skel->obj);
         if (ret)
         {

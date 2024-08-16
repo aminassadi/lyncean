@@ -1,25 +1,27 @@
 #include "input_parser.h"
 #include <stdlib.h>
 
-std::tuple<int, std::string, std::vector<std::string>> InputParser::get_input_parameters(int argc, ARGV &argv)
+std::tuple<int, std::string, std::vector<std::string>, bool> InputParser::get_input_parameters(int argc, ARGV &argv)
 {
     argparse::ArgumentParser parser("lyncean");
     register_pid(parser);
     register_command(parser);
+    register_follow_fork_flag(parser);
     apply_parser(parser, argc, argv);
     auto optionalPid = extract_pid(parser);
     auto optionalCmd = extract_command(parser);
+    auto follow_fork_flag = extract_follow_fork_flag(parser);
     check_inputs(parser, optionalPid, optionalCmd);
     auto pid = get_pid_value(optionalPid);
     auto [command, params] = separate_command_params(optionalCmd);
-    return {pid, command, params};
+    return {pid, command, params, follow_fork_flag};
 }
 
 void InputParser::register_pid(Parser &parser)
 {
-    parser.add_argument("--pid")
+    parser.add_argument("-p", "--pid")
         .default_value(0)
-        .help("whcih process id to watching.")
+        .help("trace process by pid.")
         .action([](const std::string &value)
                 {
             try 
@@ -45,10 +47,15 @@ void InputParser::register_pid(Parser &parser)
 
 void InputParser::register_command(Parser &parser)
 {
-    parser.add_argument("--command")
+    parser.add_argument("-c", "--command")
         .default_value(std::vector<std::string>({"empty"}))
-        .help("The command to execute")
+        .help("excecute and trace.")
         .remaining();
+}
+
+void InputParser::register_follow_fork_flag(Parser &parser)
+{
+    parser.add_argument("-f", "--follow-forks").help("trace child process of traced process").flag();
 }
 
 void InputParser::apply_parser(Parser &parser, int argc, ARGV &argv)
@@ -102,6 +109,11 @@ std::optional<std::string> InputParser::extract_command(Parser &parser)
     return std::nullopt;
 }
 
+bool InputParser::extract_follow_fork_flag(Parser &parser)
+{
+    return parser["--follow-forks"] == true;
+}
+
 void InputParser::check_inputs(Parser &parser, std::optional<int> pid, std::optional<std::string> cmd)
 {
     if (!pid && !cmd)
@@ -133,15 +145,17 @@ std::tuple<std::string, std::vector<std::string>> InputParser::separate_command_
 
     size_t pos = 0;
     std::string token;
-    while ((pos = tmpParams.find(' ')) != std::string::npos) 
+    while ((pos = tmpParams.find(' ')) != std::string::npos)
     {
         token = tmpParams.substr(0, pos);
-        if (!token.empty()) {
+        if (!token.empty())
+        {
             params.push_back(token);
         }
         tmpParams.erase(0, pos + 1);
     }
-    if (!tmpParams.empty()) {
+    if (!tmpParams.empty())
+    {
         params.push_back(tmpParams);
     }
 
@@ -150,7 +164,7 @@ std::tuple<std::string, std::vector<std::string>> InputParser::separate_command_
 
 int InputParser::get_pid_value(std::optional<int> pid)
 {
-    if(pid)
+    if (pid)
     {
         return pid.value();
     }

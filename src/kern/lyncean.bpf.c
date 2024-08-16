@@ -12,26 +12,27 @@ int tail_raw_syscall_read_exit(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_read_syscall *read_struct = NULL;
-    read_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!read_struct)
+    struct_read_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from read_struct_pool failed\n");
         goto out;
     }
-    void *ptr_start = (void *)read_struct;
-    void *ptr_end = (void *)read_struct->buff;
-    read_struct->fd = args->arg[0];
-    read_struct->syscallid = args->syscallid;
-    read_struct->count = args->arg[2];
-    if (bpf_probe_read(&read_struct->rc, sizeof(int64_t), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    void *ptr_start = (void *)event;
+    void *ptr_end = (void *)event->buff;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->fd = args->arg[0];
+    event->count = args->arg[2];
+    if (bpf_probe_read(&event->rc, sizeof(int64_t), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
-    u32 size = read_struct->rc;
+    u32 size = event->rc;
     asm volatile("%[size] &= 16383\n"
                  : [size] "+&r"(size));
-    if (bpf_probe_read(read_struct->buff, size, (void *)args->arg[1]) == 0)
+    if (bpf_probe_read(event->buff, size, (void *)args->arg[1]) == 0)
     {
         ptr_end += size;
     }
@@ -61,27 +62,28 @@ int tail_raw_syscall_write_exit(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_write_syscall *write_struct = NULL;
-    write_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!write_struct)
+    struct_write_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from write_struct_pool failed\n");
         goto out;
     }
-    void *ptr_start = (void *)write_struct;
-    void *ptr_end = (void *)write_struct->buff;
-    write_struct->fd = args->arg[0];
-    write_struct->syscallid = args->syscallid;
-    write_struct->count = args->arg[2];
-    if (bpf_probe_read(&write_struct->rc, sizeof(int64_t), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    void *ptr_start = (void *)event;
+    void *ptr_end = (void *)event->buff;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->fd = args->arg[0];
+    event->count = args->arg[2];
+    if (bpf_probe_read(&event->rc, sizeof(int64_t), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
 
-    u32 size = write_struct->rc;
+    u32 size = event->rc;
     asm volatile("%[size] &= 16383\n"
                  : [size] "+&r"(size));
-    if (bpf_probe_read(write_struct->buff, size, (void *)args->arg[1]) == 0)
+    if (bpf_probe_read(event->buff, size, (void *)args->arg[1]) == 0)
     {
         ptr_end += size;
     }
@@ -111,23 +113,24 @@ int tail_raw_syscall_open_exit(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_open_syscall *open_struct = NULL;
-    open_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!open_struct)
+    struct_open_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from open_struct_pool failed\n");
         goto out;
     }
-    void *ptr_start = (void *)open_struct;
-    void *ptr_end = (void *)open_struct->pathname;
-    open_struct->syscallid = args->syscallid;
-    open_struct->flag = args->arg[1];
-    open_struct->mode = args->arg[2];
-    if (bpf_probe_read(&open_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    void *ptr_start = (void *)event;
+    void *ptr_end = (void *)event->pathname;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->flag = args->arg[1];
+    event->mode = args->arg[2];
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
-    long size = bpf_probe_read_str(open_struct->pathname, MAX_PATH, (void *)args->arg[0]);
+    long size = bpf_probe_read_str(event->pathname, MAX_PATH, (void *)args->arg[0]);
     if (size > 0)
     {
         ptr_end += size;
@@ -158,20 +161,21 @@ int tail_raw_syscall_close_exit(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_close_syscall *close_struct = NULL;
-    close_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!close_struct)
+    struct_close_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from open_struct_pool failed\n");
         goto out;
     }
-    close_struct->syscallid = args->syscallid;
-    close_struct->fd = args->arg[0];
-    if (bpf_probe_read(&close_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->fd = args->arg[0];
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
-    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, close_struct, sizeof(struct_close_syscall));
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, event, sizeof(struct_close_syscall));
     if (ret != 0)
     {
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
@@ -192,27 +196,28 @@ int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_fork_syscall *fork_struct = NULL;
-    fork_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!fork_struct)
+    struct_fork_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from event_pool failed\n");
         goto out;
     }
-    if (bpf_probe_read(&fork_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
-    fork_struct->syscallid = args->syscallid;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
     bpf_config_struct *config = NULL;
     int config_key = 0;
     config = bpf_map_lookup_elem(&config_map, &config_key);
     if (config)
     {
-        if (config->follow_childs && fork_struct->rc > 0)
+        if (config->follow_childs && event->rc > 0)
         {
             bool val = true;
-            if (bpf_map_update_elem(&target_tasks_map, &fork_struct->rc, &val, BPF_ANY))
+            if (bpf_map_update_elem(&target_tasks_map, &event->rc, &val, BPF_ANY))
             {
                 BPF_PRINTK("cannot update target_task_map\n");
             }
@@ -222,7 +227,60 @@ int tail_raw_syscall_fork_exit(struct __raw_tracepoint_args *ctx)
     {
         BPF_PRINTK("ERROR, lookup from config map failed\n");
     }
-    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, fork_struct, sizeof(struct_fork_syscall));
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, event, sizeof(struct_fork_syscall));
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    return 0;
+}
+
+SEC("lyncean/raw_syscalls/clone_exit")
+int tail_raw_syscall_clone_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_clone_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
+    {
+        BPF_PRINTK("ERROR, lookup from event_pool failed\n");
+        goto out;
+    }
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->flags = args->arg[0];
+    bpf_config_struct *config = NULL;
+    int config_key = 0;
+    config = bpf_map_lookup_elem(&config_map, &config_key);
+    if (config)
+    {
+        if (config->follow_childs && event->rc > 0 && ((event->flags & CLONE_THREAD) != CLONE_THREAD))
+        {
+            bool val = true;
+            if (bpf_map_update_elem(&target_tasks_map, &event->rc, &val, BPF_ANY))
+            {
+                BPF_PRINTK("cannot update target_task_map\n");
+            }
+        }
+    }
+    else
+    {
+        BPF_PRINTK("ERROR, lookup from config map failed\n");
+    }
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, event, sizeof(struct_clone_syscall));
     if (ret != 0)
     {
         BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
@@ -243,22 +301,23 @@ int tail_raw_syscall_creat_exit(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_creat_syscall *creat_struct = NULL;
-    creat_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!creat_struct)
+    struct_creat_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from creat_struct_pool failed\n");
         goto out;
     }
-    void *ptr_start = (void *)creat_struct;
-    void *ptr_end = (void *)creat_struct->pathname;
-    creat_struct->syscallid = args->syscallid;
-    creat_struct->mode = args->arg[1];
-    if (bpf_probe_read(&creat_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    void *ptr_start = (void *)event;
+    void *ptr_end = (void *)event->pathname;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->mode = args->arg[1];
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
-    long size = bpf_probe_read_str(creat_struct->pathname, MAX_PATH, (void *)args->arg[0]);
+    long size = bpf_probe_read_str(event->pathname, MAX_PATH, (void *)args->arg[0]);
     if (size > 0)
     {
         ptr_end += size;
@@ -289,31 +348,127 @@ int tail_raw_syscall_openat_exit(struct __raw_tracepoint_args *ctx)
         return 0;
     }
     uint32_t cpu = bpf_get_smp_processor_id();
-    struct_openat_syscall *openat_struct = NULL;
-    openat_struct = bpf_map_lookup_elem(&event_pool, &cpu);
-    if (!openat_struct)
+    struct_openat_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
     {
         BPF_PRINTK("ERROR, lookup from openat_struct_pool failed\n");
         goto out;
     }
-    void *ptr_start = (void *)openat_struct;
-    void *ptr_end = (void *)openat_struct->pathname;
-    openat_struct->syscallid = args->syscallid;
-    openat_struct->dirfd = args->arg[0];
-    openat_struct->flag = args->arg[2];
-    openat_struct->mode = args->arg[3];
-    if (bpf_probe_read(&openat_struct->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    void *ptr_start = (void *)event;
+    void *ptr_end = (void *)event->pathname;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->dirfd = args->arg[0];
+    event->flag = args->arg[2];
+    event->mode = args->arg[3];
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
     {
         BPF_PRINTK("ERROR, failed to get return code\n");
     }
-    long size = bpf_probe_read_str(openat_struct->pathname, MAX_PATH, (void *)args->arg[1]);
+    long size = bpf_probe_read_str(event->pathname, MAX_PATH, (void *)args->arg[1]);
     if (size > 0)
     {
         ptr_end += size;
     }
     else
     {
-        BPF_PRINTK("ERROR, tail_raw_syscall_openat_exit, bpd_probe_openat failed.\n");
+        BPF_PRINTK("ERROR, tail_raw_syscall_openat_exit, bpf_probe_openat failed.\n");
+    }
+    __u64 len = ptr_end - ptr_start;
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    return 0;
+}
+
+SEC("lyncean/raw_syscalls/unlink_exit")
+int tail_raw_syscall_unlink_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_unlink_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
+    {
+        BPF_PRINTK("ERROR, lookup from unlink_struct_pool failed\n");
+        goto out;
+    }
+    void *ptr_start = (void *)event;
+    void *ptr_end = (void *)event->pathname;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+    long size = bpf_probe_read_str(event->pathname, MAX_PATH, (void *)args->arg[0]);
+    if (size > 0)
+    {
+        ptr_end += size;
+    }
+    else
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_unlink_exit, bpd_probe_open failed.\n");
+    }
+    __u64 len = ptr_end - ptr_start;
+    int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
+    if (ret != 0)
+    {
+        BPF_PRINTK("ERROR, output to perf buffer, code:%ld, syscallid:%d", ret, args->syscallid);
+    }
+out:
+    bpf_map_delete_elem(&syscall_args_map, &pidtid);
+    return 0;
+}
+
+SEC("lyncean/raw_syscalls/unlinkat_exit")
+int tail_raw_syscall_unlinkat_exit(struct __raw_tracepoint_args *ctx)
+{
+    uint64_t pidtid = bpf_get_current_pid_tgid();
+    syscall_args *args = NULL;
+    args = bpf_map_lookup_elem(&syscall_args_map, &pidtid);
+    if (!args)
+    {
+        return 0;
+    }
+    uint32_t cpu = bpf_get_smp_processor_id();
+    struct_unlinkat_syscall *event = NULL;
+    event = bpf_map_lookup_elem(&event_pool, &cpu);
+    if (!event)
+    {
+        BPF_PRINTK("ERROR, lookup from unlinkat_struct_pool failed\n");
+        goto out;
+    }
+    void *ptr_start = (void *)event;
+    void *ptr_end = (void *)event->pathname;
+    event->header.syscallid = args->syscallid;
+    event->header.pid = pidtid >> 32;
+    event->dirfd = args->arg[0];
+    event->flag = args->arg[2];
+    if (bpf_probe_read(&event->rc, sizeof(int), (void *)&PT_REGS_RC((struct pt_regs *)ctx->args[0])) != 0)
+    {
+        BPF_PRINTK("ERROR, failed to get return code\n");
+    }
+    long size = bpf_probe_read_str(event->pathname, MAX_PATH, (void *)args->arg[1]);
+    if (size > 0)
+    {
+        ptr_end += size;
+    }
+    else
+    {
+        BPF_PRINTK("ERROR, tail_raw_syscall_unlinkat_exit, bpd_probe_unlinkat failed.\n");
     }
     __u64 len = ptr_end - ptr_start;
     int ret = bpf_perf_event_output(ctx, &perf_buff, BPF_F_CURRENT_CPU, ptr_start, len < MAX_EVENT_SIZE ? len : 0);
@@ -332,7 +487,7 @@ int process_exit(void *ctx)
     uint64_t pidtid = bpf_get_current_pid_tgid();
     uint32_t pid = pidtid >> 32;
     uint32_t tid = pidtid << 32;
-    if(pid == tid)
+    if (pid == tid)
     {
         bpf_map_delete_elem(&target_tasks_map, &pid);
     }

@@ -10,8 +10,6 @@
 
 using namespace std::literals;
 
-realastic_impl sr;
-std::optional<lynceanbpf_bpf *> skel{};
 std::unique_ptr<event_handler> bpf_event_handler;
 
 static void handle_terminate_signal(int sig)
@@ -22,14 +20,18 @@ static void handle_terminate_signal(int sig)
 
 int main(int argc, char **argv)
 {
-    auto [pid, command, params] = InputParser::get_input_parameters(argc, argv);
+    std::unique_ptr<serializer> sr;
+    std::optional<lynceanbpf_bpf *> skel{};
+    auto [pid, command, params, follow_forks] = InputParser::get_input_parameters(argc, argv);
 
     signal(SIGINT, handle_terminate_signal);
     signal(SIGTERM, handle_terminate_signal);
 
     if (pid)
     {
-        MainOperaion::run_sync_task(skel, bpf_event_handler, sr, pid);
+        setting stg{pid, follow_forks};
+        sr = std::make_unique<realastic_impl>(stg);
+        main_operation::run_sync_task(skel, bpf_event_handler, sr.get(), stg);
         return 0;
     }
 
@@ -42,10 +44,12 @@ int main(int argc, char **argv)
     }
     else if (pid == 0)
     {
-        MainOperaion::child_operaion(command, params);
+        main_operation::child_operaion(command, params);
     }
     else
     {
-        MainOperaion::run_async_task(skel, bpf_event_handler, sr, pid);
+        setting stg{pid, follow_forks};
+        sr = std::make_unique<realastic_impl>(stg);
+        main_operation::run_async_task(skel, bpf_event_handler, sr.get(), stg);
     }
 }
